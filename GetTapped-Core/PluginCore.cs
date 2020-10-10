@@ -1,59 +1,40 @@
-﻿using System;
-using HarmonyLib;
-using BepInEx;
+﻿using System.Text;
 using UnityEngine;
-using BepInEx.Configuration;
-using UnityEngineInternal.Input;
-using UnityEngine.Windows.Speech;
 
 namespace Karenia.GetTapped.Core
 {
-    public static class Plugin
+    public static class PluginCore
     {
-        public static IGetTappedCore PluginCore { get; internal set; } = null;
-    }
+        static CameraMovement? calculated;
+        static int lastFrame = -1;
 
-    [BepInPlugin(id, projectName, version)]
-    class PluginCore : BaseUnityPlugin, IGetTappedCore
-    {
-        private const string projectName = "GetTapped-Core";
-        private const string version = "0.1.0";
-        private const string id = "cc.karenia.gettappedcore";
-
-        public ConfigEntry<bool> pluginEnabled;
-        public ConfigEntry<bool> singleTapTranslate;
-
-        public PluginCore()
+        public static CameraMovement GetCameraMovement(bool singleTapPan = false, bool invertX = false, bool invertY = false, bool forceRecalcualte = false)
         {
-            Plugin.PluginCore = this;
-            BindConfig();
-        }
-
-        private void BindConfig()
-        {
-            pluginEnabled = Config.Bind(new ConfigDefinition("default", "Enabled"), true);
-            singleTapTranslate = Config.Bind(new ConfigDefinition("default", "TranslateUsingSingleTap"), false);
-        }
-
-        public CameraMovement ParseTapIntoCameraMovement()
-        {
-            if (!pluginEnabled.Value) return CameraMovement.Zero();
+            var frame = Time.frameCount;
+            if (frame == lastFrame
+                && !forceRecalcualte
+                && calculated.HasValue)
+            {
+                return calculated.Value;
+            }
+            lastFrame = frame;
 
             var cnt = Input.touchCount;
 
-            if (singleTapTranslate.Value)
+            CameraMovement cameraMovement;
+            if (singleTapPan)
             {
-                return cnt switch
+                cameraMovement = cnt switch
                 {
                     0 => CameraMovement.Zero(),
-                    1 => SingleTouchToCameraTranslate(Input.GetTouch(0)),
+                    1 => SingleTouchToCameraPan(Input.GetTouch(0)),
                     2 => DoubleTouchToCameraRotate(Input.GetTouch(0), Input.GetTouch(1)),
                     _ => CameraMovement.Zero(),
                 };
             }
             else
             {
-                return cnt switch
+                cameraMovement = cnt switch
                 {
                     0 => CameraMovement.Zero(),
                     1 => SingleTouchToCamera(Input.GetTouch(0)),
@@ -61,15 +42,18 @@ namespace Karenia.GetTapped.Core
                     _ => CameraMovement.Zero(),
                 };
             }
+
+            calculated = cameraMovement;
+            return cameraMovement;
         }
 
-        private CameraMovement SingleTouchToCamera(Touch tap1)
+        private static CameraMovement SingleTouchToCamera(Touch tap1)
         {
             var delta = tap1.deltaPosition;
             return CameraMovement.Rotate(delta);
         }
 
-        private CameraMovement DoubleTouchToCamera(Touch tap1, Touch tap2)
+        private static CameraMovement DoubleTouchToCamera(Touch tap1, Touch tap2)
         {
             var centerDelta = (tap1.deltaPosition + tap2.deltaPosition) / 2;
 
@@ -88,13 +72,13 @@ namespace Karenia.GetTapped.Core
             return new CameraMovement(new Vector3(0, 0, angle), centerDelta, zoomFactor);
         }
 
-        private CameraMovement SingleTouchToCameraTranslate(Touch tap1)
+        private static CameraMovement SingleTouchToCameraPan(Touch tap1)
         {
             var delta = tap1.deltaPosition;
             return CameraMovement.Translate(delta);
         }
 
-        private CameraMovement DoubleTouchToCameraRotate(Touch tap1, Touch tap2)
+        private static CameraMovement DoubleTouchToCameraRotate(Touch tap1, Touch tap2)
         {
             var centerDelta = (tap1.deltaPosition + tap2.deltaPosition) / 2;
 
@@ -114,10 +98,10 @@ namespace Karenia.GetTapped.Core
         }
     }
 
-    public interface IGetTappedCore
-    {
-        CameraMovement ParseTapIntoCameraMovement();
-    }
+    //public interface IGetTappedCore
+    //{
+    //    CameraMovement ParseTapIntoCameraMovement(bool singleTapTranslate);
+    //}
 
     public struct CameraMovement
     {
@@ -145,6 +129,11 @@ namespace Karenia.GetTapped.Core
         public static CameraMovement Rotate(Vector3 rotation)
         {
             return new CameraMovement(rotation, Vector2.zero, 1.0f);
+        }
+
+        public override string ToString()
+        {
+            return $"CameraMovement {{ Rot = {ScreenSpaceRotation}, Pan = {ScreenSpaceTranslation}, Zoom = {Zoom} }}";
         }
     }
 
