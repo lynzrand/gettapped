@@ -75,6 +75,43 @@ namespace Karenia.GetTapped.IO
             return true;
         }
 
+        [HarmonyPrefix]
+        [HarmonyPatch(typeof(SmoothCameraOrbit), "LateUpdate")]
+        public static bool HookSmoothCameraOrbitRotation(
+            ref float ___xDeg,
+            ref float ___yDeg,
+            ref float ___desiredDistance)
+        {
+            var plugin = Plugin.Instance;
+            if (!plugin.PluginEnabled.Value) return true;
+
+            var movement = Core.PluginCore.GetCameraMovement(plugin.SingleTapTranslate.Value);
+
+            ___xDeg += movement.ScreenSpaceRotation.x * plugin.RotationSensitivity.Value;
+            ___yDeg += movement.ScreenSpaceRotation.y * plugin.RotationSensitivity.Value;
+            ___desiredDistance += -Mathf.Log(movement.Zoom) * plugin.ZoomSensitivity.Value;
+
+            return true;
+        }
+
+
+        [HarmonyPrefix]
+        [HarmonyPatch(typeof(SmoothCamera), "eA")]
+        public static bool HookFpvRotation(
+            ref float ___hor,
+            ref float ___ver)
+        {
+            var plugin = Plugin.Instance;
+            if (!plugin.PluginEnabled.Value) return true;
+
+            var movement = Core.PluginCore.GetCameraMovement(plugin.SingleTapTranslate.Value);
+
+            ___hor += movement.ScreenSpaceRotation.x * plugin.RotationSensitivity.Value;
+            ___ver += movement.ScreenSpaceRotation.y * plugin.RotationSensitivity.Value;
+
+            return true;
+        }
+
         static bool cameraPatched = false;
 
         [HarmonyTranspiler]
