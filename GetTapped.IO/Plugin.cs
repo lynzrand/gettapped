@@ -9,6 +9,9 @@ using System.Reflection.Emit;
 using System.Data.SqlTypes;
 using System.Linq;
 using System.Reflection;
+using Karenia.GetTapped.Core;
+using UnityEngine.SceneManagement;
+using System.Collections;
 
 namespace Karenia.GetTapped.IO
 {
@@ -21,30 +24,26 @@ namespace Karenia.GetTapped.IO
 
         public Plugin()
         {
-            BindConfig();
+            Config = new PluginConfig();
+            Config.BindConfig(base.Config);
             Logger = BepInEx.Logging.Logger.CreateLogSource("LipSync");
             var harmony = new Harmony(id);
             harmony.PatchAll(typeof(Hook));
+            Core = new PluginCore();
             Instance = this;
         }
 
-        public ConfigEntry<bool> PluginEnabled;
-        public ConfigEntry<bool> SingleTapTranslate;
-        public ConfigEntry<float> RotationSensitivity;
-        public ConfigEntry<float> ZoomSensitivity;
-        public ConfigEntry<float> TranslationSensitivity;
-
-        private void BindConfig()
-        {
-            PluginEnabled = Config.Bind(new ConfigDefinition("default", "Enabled"), true);
-            SingleTapTranslate = Config.Bind(new ConfigDefinition("default", "Translate using single tap"), false);
-            RotationSensitivity = Config.Bind(new ConfigDefinition("default", "Rotation sensitivity"), 0.3f);
-            ZoomSensitivity = Config.Bind(new ConfigDefinition("default", "Zoom sensitivity"), 0.1f);
-            TranslationSensitivity = Config.Bind(new ConfigDefinition("default", "Translation sensitivity"), 0.1f);
-        }
 
         public static Plugin Instance { get; private set; }
+        public new PluginConfig Config { get; set; }
         public new BepInEx.Logging.ManualLogSource Logger { get; private set; }
+        public IGetTappedPlugin Core { get; private set; }
+
+        public ConfigEntry<bool> PluginEnabled { get => Config.PluginEnabled; }
+        public ConfigEntry<bool> SingleTapTranslate { get => Config.SingleTapTranslate; }
+        public ConfigEntry<float> RotationSensitivity { get => Config.RotationSensitivity; }
+        public ConfigEntry<float> TranslationSensitivity { get => Config.TranslationSensitivity; }
+        public ConfigEntry<float> ZoomSensitivity { get => Config.ZoomSensitivity; }
     }
 
     public static class Hook
@@ -64,9 +63,9 @@ namespace Karenia.GetTapped.IO
             ref float ___zoomVelocity)
         {
             var plugin = Plugin.Instance;
-            if (!plugin.PluginEnabled.Value) return true;
+            if (!plugin.Config.PluginEnabled.Value) return true;
 
-            var movement = Core.PluginCore.GetCameraMovement(plugin.SingleTapTranslate.Value);
+            var movement = plugin.Core.GetCameraMovement(plugin.SingleTapTranslate.Value);
 
             ___xVelocity += movement.ScreenSpaceRotation.x * plugin.RotationSensitivity.Value;
             ___yVelocity += movement.ScreenSpaceRotation.y * plugin.RotationSensitivity.Value;
@@ -83,9 +82,9 @@ namespace Karenia.GetTapped.IO
             ref float ___desiredDistance)
         {
             var plugin = Plugin.Instance;
-            if (!plugin.PluginEnabled.Value) return true;
+            if (!plugin.Config.PluginEnabled.Value) return true;
 
-            var movement = Core.PluginCore.GetCameraMovement(plugin.SingleTapTranslate.Value);
+            var movement = plugin.Core.GetCameraMovement(plugin.SingleTapTranslate.Value);
 
             ___xDeg += movement.ScreenSpaceRotation.x * plugin.RotationSensitivity.Value;
             ___yDeg += movement.ScreenSpaceRotation.y * plugin.RotationSensitivity.Value;
@@ -102,9 +101,9 @@ namespace Karenia.GetTapped.IO
             ref float ___ver)
         {
             var plugin = Plugin.Instance;
-            if (!plugin.PluginEnabled.Value) return true;
+            if (!plugin.Config.PluginEnabled.Value) return true;
 
-            var movement = Core.PluginCore.GetCameraMovement(plugin.SingleTapTranslate.Value);
+            var movement = plugin.Core.GetCameraMovement(plugin.SingleTapTranslate.Value);
 
             ___hor += movement.ScreenSpaceRotation.x * plugin.RotationSensitivity.Value;
             ___ver += movement.ScreenSpaceRotation.y * plugin.RotationSensitivity.Value;
@@ -195,9 +194,9 @@ namespace Karenia.GetTapped.IO
         static void HookCameraTranslationData(ref float x, ref float y)
         {
             var plugin = Plugin.Instance;
-            if (!plugin.PluginEnabled.Value) return;
+            if (!plugin.Config.PluginEnabled.Value) return;
 
-            var movement = Core.PluginCore.GetCameraMovement(plugin.SingleTapTranslate.Value);
+            var movement = plugin.Core.GetCameraMovement(plugin.SingleTapTranslate.Value);
             x += movement.ScreenSpaceTranslation.x * plugin.TranslationSensitivity.Value;
             y += movement.ScreenSpaceTranslation.y * plugin.TranslationSensitivity.Value;
         }

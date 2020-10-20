@@ -3,3 +3,4 @@ obj
 /reference/games/*
 !/reference/games/*.gitkeep
 .vs
+/Release

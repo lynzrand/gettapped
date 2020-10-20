@@ -4,10 +4,6 @@
     <TargetFramework>net35</TargetFramework>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <DefineConstants>UNITY50</DefineConstants>
-  </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\GetTapped-Core\GetTapped-Core.csproj" />
   </ItemGroup>
@@ -26,12 +22,12 @@
       <HintPath>..\reference\UnityEngine.unity5.dll</HintPath>
     </Reference>
     <Reference Include="*">
-      <HintPath>..\reference\games\insultorder\Assembly-CSharp.dll</HintPath>
+      <HintPath>..\reference\games\koikatsu\Assembly-CSharp.dll</HintPath>
     </Reference>
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <MakeDir Directories="../Release/GetTappedIO/BepInEx/plugins"/>
-    <Copy SourceFiles="./$(OutDir)GetTapped.IO.dll;./$(OutDir)GetTapped-Core.dll" DestinationFolder="../Release/GetTappedIO/BepInEx/plugins"/>
+    <MakeDir Directories="../Release/GetTappedKK/BepInEx/plugins"/>
+    <Copy SourceFiles="./$(OutDir)GetTapped.KK.dll;./$(OutDir)GetTapped-Core.dll" DestinationFolder="../Release/GetTappedKK/BepInEx/plugins"/>
   </Target>
 </Project>
