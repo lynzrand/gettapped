@@ -1,0 +1,35 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net35</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="BepInEx">
+      <HintPath>..\reference\BepInEx.dll</HintPath>
+    </Reference>
+    <Reference Include="HarmonyLib">
+      <HintPath>..\reference\0Harmony.dll</HintPath>
+    </Reference>
+    <Reference Include="BepInEx.Harmony">
+      <HintPath>..\reference\BepInEx.Harmony.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>..\reference\UnityEngine.unity5.dll</HintPath>
+    </Reference>
+    <Reference Include="*">
+      <HintPath>..\reference\games\koikatsu\Assembly-CSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="kPlug">
+      <HintPath>..\reference\games\koikatsu\kPlug.dll</HintPath>
+    </Reference>
+    <Reference Include="*">
+      <HintPath>..\reference\games\koikatsu\ExtensibleSaveFormat.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <MakeDir Directories="../Release/FixKPlug/BepInEx/plugins"/>
+    <Copy SourceFiles="./$(OutDir)FixKPlug.dll" DestinationFolder="../Release/FixKPlug/BepInEx/plugins"/>
+  </Target>
+</Project>
