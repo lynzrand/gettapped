@@ -1,14 +1,41 @@
 ﻿using System.Text;
 using UnityEngine;
+using BepInEx.Configuration;
+using BepInEx;
+using UnityEngine.EventSystems;
+using System.Collections.Generic;
+using UnityEngine.UI;
+using System;
 
 namespace Karenia.GetTapped.Core
 {
-    public static class PluginCore
+    public class PluginConfig
     {
-        static CameraMovement? calculated;
-        static int lastFrame = -1;
+        public ConfigEntry<bool> PluginEnabled;
+        public ConfigEntry<bool> SingleTapTranslate;
+        public ConfigEntry<float> RotationSensitivity;
+        public ConfigEntry<float> ZoomSensitivity;
+        public ConfigEntry<float> TranslationSensitivity;
 
-        public static CameraMovement GetCameraMovement(bool singleTapPan = false, bool invertX = false, bool invertY = false, bool forceRecalcualte = false)
+        public virtual void BindConfig(ConfigFile Config)
+        {
+            PluginEnabled = Config.Bind(new ConfigDefinition("default", "Enabled"), true);
+            SingleTapTranslate = Config.Bind(new ConfigDefinition("default", "Translate using single tap"), false);
+            RotationSensitivity = Config.Bind(new ConfigDefinition("default", "Rotation sensitivity"), 0.3f);
+            ZoomSensitivity = Config.Bind(new ConfigDefinition("default", "Zoom sensitivity"), 0.1f);
+            TranslationSensitivity = Config.Bind(new ConfigDefinition("default", "Translation sensitivity"), 0.1f);
+        }
+    }
+
+    public class PluginCore : IGetTappedPlugin
+    {
+        CameraMovement? calculated = null;
+        int lastFrame = -1;
+
+        readonly HashSet<int> untrackedPointers = new HashSet<int>();
+        readonly List<Touch> framePointers = new List<Touch>();
+
+        public CameraMovement GetCameraMovement(bool singleTapPan = false, bool forceRecalcualte = false, Func<Touch, bool>? shouldBeUntracked = null)
         {
             var frame = Time.frameCount;
             if (frame == lastFrame
@@ -21,14 +48,25 @@ namespace Karenia.GetTapped.Core
 
             var cnt = Input.touchCount;
 
+            for (int i = 0; i < cnt; i++)
+            {
+                var pointer = Input.GetTouch(i);
+                if (!ManageUntrackedPointer(ref pointer, shouldBeUntracked))
+                {
+                    framePointers.Add(pointer);
+                }
+            }
+
+            cnt = framePointers.Count;
+
             CameraMovement cameraMovement;
             if (singleTapPan)
             {
                 cameraMovement = cnt switch
                 {
                     0 => CameraMovement.Zero(),
-                    1 => SingleTouchToCameraPan(Input.GetTouch(0)),
-                    2 => DoubleTouchToCameraRotate(Input.GetTouch(0), Input.GetTouch(1)),
+                    1 => SingleTouchToCameraPan(framePointers[0]),
+                    2 => DoubleTouchToCameraRotate(framePointers[0], framePointers[1]),
                     _ => CameraMovement.Zero(),
                 };
             }
@@ -37,23 +75,51 @@ namespace Karenia.GetTapped.Core
                 cameraMovement = cnt switch
                 {
                     0 => CameraMovement.Zero(),
-                    1 => SingleTouchToCamera(Input.GetTouch(0)),
-                    2 => DoubleTouchToCamera(Input.GetTouch(0), Input.GetTouch(1)),
+                    1 => SingleTouchToCamera(framePointers[0]),
+                    2 => DoubleTouchToCamera(framePointers[0], framePointers[1]),
                     _ => CameraMovement.Zero(),
                 };
             }
 
             calculated = cameraMovement;
+
+            // cleanup
+            framePointers.Clear();
+
             return cameraMovement;
         }
 
-        private static CameraMovement SingleTouchToCamera(Touch tap1)
+        private bool ManageUntrackedPointer(ref Touch touch, Func<Touch, bool>? shouldBeUntracked)
+        {
+            if (touch.phase == TouchPhase.Began)
+            {
+                if (shouldBeUntracked != null && shouldBeUntracked(touch))
+                {
+                    untrackedPointers.Add(touch.fingerId);
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else if (touch.phase == TouchPhase.Ended)
+            {
+                return untrackedPointers.Remove(touch.fingerId);
+            }
+            else
+            {
+                return untrackedPointers.Contains(touch.fingerId);
+            }
+        }
+
+        private CameraMovement SingleTouchToCamera(Touch tap1)
         {
             var delta = tap1.deltaPosition;
             return CameraMovement.Rotate(delta);
         }
 
-        private static CameraMovement DoubleTouchToCamera(Touch tap1, Touch tap2)
+        private CameraMovement DoubleTouchToCamera(Touch tap1, Touch tap2)
         {
             var centerDelta = (tap1.deltaPosition + tap2.deltaPosition) / 2;
 
@@ -72,13 +138,13 @@ namespace Karenia.GetTapped.Core
             return new CameraMovement(new Vector3(0, 0, angle), centerDelta, zoomFactor);
         }
 
-        private static CameraMovement SingleTouchToCameraPan(Touch tap1)
+        private CameraMovement SingleTouchToCameraPan(Touch tap1)
         {
             var delta = tap1.deltaPosition;
             return CameraMovement.Translate(delta);
         }
 
-        private static CameraMovement DoubleTouchToCameraRotate(Touch tap1, Touch tap2)
+        private CameraMovement DoubleTouchToCameraRotate(Touch tap1, Touch tap2)
         {
             var centerDelta = (tap1.deltaPosition + tap2.deltaPosition) / 2;
 
@@ -98,10 +164,10 @@ namespace Karenia.GetTapped.Core
         }
     }
 
-    //public interface IGetTappedCore
-    //{
-    //    CameraMovement ParseTapIntoCameraMovement(bool singleTapTranslate);
-    //}
+    public interface IGetTappedPlugin
+    {
+        CameraMovement GetCameraMovement(bool singleTapTranslate = false, bool forceRecalculate = false, Func<Touch, bool>? shouldBeUntracked = null);
+    }
 
     public struct CameraMovement
     {
@@ -134,6 +200,11 @@ namespace Karenia.GetTapped.Core
         public override string ToString()
         {
             return $"CameraMovement {{ Rot = {ScreenSpaceRotation}, Pan = {ScreenSpaceTranslation}, Zoom = {Zoom} }}";
+        }
+
+        public bool HasMoved()
+        {
+            return this.ScreenSpaceRotation != Vector3.zero || this.ScreenSpaceTranslation != Vector2.zero || this.Zoom != 1;
         }
     }
 
