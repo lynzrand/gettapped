@@ -19,9 +19,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FixKPlug", "FixKPlug\FixKPl
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GetTapped.com3d2", "GetTapped.com3d2\GetTapped.com3d2.csproj", "{C0E0C8BF-9888-401E-9A09-BD125BB311CD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FixEyeMov.Core", "FixationalEyeMovement.Core\FixEyeMov.Core.csproj", "{C4CF8729-5EE1-4085-8CD3-64D7160E758F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FixEyeMov.Core", "FixEyeMov.Core\FixEyeMov.Core.csproj", "{C4CF8729-5EE1-4085-8CD3-64D7160E758F}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FixEyeMov.com3d2", "FixationalEyeMovement.com3d2\FixEyeMov.com3d2.csproj", "{9CBF3F22-A0D0-48CF-9F27-79AD19981A39}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FixEyeMov.com3d2", "FixEyeMov.com3d2\FixEyeMov.com3d2.csproj", "{9CBF3F22-A0D0-48CF-9F27-79AD19981A39}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

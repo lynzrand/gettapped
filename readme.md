@@ -1,7 +1,36 @@
-# GetTapped
+﻿# ErogePlugins
 
-Various plugins and fixes, mainly touchscreen fixes, for various games.
+Various plugins and fixes, for various Unity-based eroges.
 
+## Plugins within this project
+
+### GetTapped
+
+Touch to camera motion adaptor for tablet users.
+
+| Game     | Project | Status |
+|----------|---------|---------|
+| (Plugin core)|GetTapped.Core|✅
+| KoiKatsu | GetTapped.KK| ✅
+| Insult Order | GetTapped.IO|✅
+| COM3D2 | GetTapped.com3d2 | ❌
+
+### FixKPlug
+
+Performance fix on H-Scene loading for KPlug (KoiKatsu) users
+
+| Game | Project | Status |
+|----|----|----|
+|KoiKatsu|FixKPlug|✅
+
+### FixEyeMov
+
+Generate fixational eye movement for characters to make them more life-like.
+
+| Game | Project | Status |
+|----|----|----|
+|(Plugin core)|FixEyeMov.Core |✅
+|COM3D2 |FixEyeMov.com3d2|✅
 
 ## Before building
 

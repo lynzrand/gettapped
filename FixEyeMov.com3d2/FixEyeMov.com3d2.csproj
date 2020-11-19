@@ -31,7 +31,7 @@
 
 
   <ItemGroup>
-    <ProjectReference Include="..\FixationalEyeMovement.Core\FixEyeMov.Core.csproj" />
+    <ProjectReference Include="..\FixEyeMov.Core\FixEyeMov.Core.csproj" />
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
