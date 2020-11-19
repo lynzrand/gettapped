@@ -17,6 +17,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GetTapped.KK", "GetTapped.K
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FixKPlug", "FixKPlug\FixKPlug.csproj", "{68A4D443-F7B5-4B2D-B956-A28069F05EBD}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GetTapped.com3d2", "GetTapped.com3d2\GetTapped.com3d2.csproj", "{C0E0C8BF-9888-401E-9A09-BD125BB311CD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{68A4D443-F7B5-4B2D-B956-A28069F05EBD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{68A4D443-F7B5-4B2D-B956-A28069F05EBD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{68A4D443-F7B5-4B2D-B956-A28069F05EBD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C0E0C8BF-9888-401E-9A09-BD125BB311CD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C0E0C8BF-9888-401E-9A09-BD125BB311CD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C0E0C8BF-9888-401E-9A09-BD125BB311CD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C0E0C8BF-9888-401E-9A09-BD125BB311CD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

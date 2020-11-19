@@ -1,0 +1,37 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net35</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <DefineConstants>DEBUG;TRACE;UNITY50</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GetTapped-Core\GetTapped-Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="BepInEx">
+      <HintPath>..\reference\BepInEx.dll</HintPath>
+    </Reference>
+    <Reference Include="HarmonyLib">
+      <HintPath>..\reference\0Harmony.dll</HintPath>
+    </Reference>
+    <Reference Include="BepInEx.Harmony">
+      <HintPath>..\reference\BepInEx.Harmony.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>..\reference\UnityEngine.unity5.dll</HintPath>
+    </Reference>
+    <Reference Include="*">
+      <HintPath>..\reference\games\com3d2\Assembly-CSharp.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <MakeDir Directories="../Release/GetTappedCom3d2/BepInEx/plugins" />
+    <Copy SourceFiles="./$(OutDir)GetTapped.com3d2.dll;./$(OutDir)GetTapped.com3d2.pdb;./$(OutDir)GetTapped-Core.dll" DestinationFolder="../Release/GetTappedCom3d2/BepInEx/plugins" />
+  </Target>
+</Project>

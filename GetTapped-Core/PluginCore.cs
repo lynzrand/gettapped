@@ -9,6 +9,7 @@ using System;
 
 namespace Karenia.GetTapped.Core
 {
+#nullable disable
     public class PluginConfig
     {
         public ConfigEntry<bool> PluginEnabled;
@@ -26,6 +27,7 @@ namespace Karenia.GetTapped.Core
             TranslationSensitivity = Config.Bind(new ConfigDefinition("default", "Translation sensitivity"), 0.1f);
         }
     }
+#nullable restore
 
     public class PluginCore : IGetTappedPlugin
     {
