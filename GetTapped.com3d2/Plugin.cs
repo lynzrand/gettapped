@@ -137,10 +137,16 @@ namespace Karenia.GetTapped.Com3d2
         }
     }
 
-
-    public class EyeMovementInfo
+    /// <summary>
+    /// State and algorithm of fixational eye simulator.
+    /// 
+    /// <para>
+    /// The original algorithm comes from https://github.com/hjiang36/pyEyeBall/
+    /// </para>
+    /// </summary>
+    public class EyeMovementState
     {
-        public EyeMovementInfo(EyeMovementConfig config)
+        public EyeMovementState(EyeMovementConfig config)
         {
             this.config = config;
         }
@@ -157,26 +163,39 @@ namespace Karenia.GetTapped.Com3d2
         float mSaccadeSpeed;
         float mSaccadeAxis;
 
+        /// <summary>
+        /// Generate information for the upcoming micro-saccade
+        /// </summary>
         private void SetNextSaccade()
         {
+            // Set time according to config
             var time = GaussianRandom(config.MSaccadeInterval.Value, config.MSaccadeIntervalStdDev.Value);
             if (time < config.MSaccadeInterval.Value / 2) time = config.MSaccadeInterval.Value;
             timeTillNextSaccade = time;
 
+            // Micro-saccade is toward center point, but with deviation.
+            // Note: this angle calculated is **away from center**, reverse is done afterwards.
             mSaccadeAxis = Mathf.Atan2(curDelta.y, curDelta.x);
             mSaccadeAxis += GaussianRandom(0, config.MSaccadeDirectionDev.Value * Mathf.Deg2Rad);
 
+            // Generate saccade speed
             mSaccadeSpeed = GaussianRandom(config.MSaccadeSpeed.Value, config.MSaccadeSpeedStdDev.Value) * Mathf.Deg2Rad;
             if (mSaccadeSpeed < 0) mSaccadeSpeed = config.MSaccadeSpeed.Value * Mathf.Deg2Rad;
 
+            // Generate move angle with deviation
             var angleToCenter = curDelta.magnitude;
             angleToCenter *= GaussianRandom(1f, config.MSaccadeOvershootDev.Value);
 
+            // Set remaining time
             remainingTimeOfThisSaccade = angleToCenter / mSaccadeSpeed;
 
             if (Plugin.Instance.EyeConfig.DebugLog.Value) Plugin.Instance.Logger.LogInfo($"Saccade: {angleToCenter} @ {mSaccadeAxis * Mathf.Rad2Deg}deg");
         }
 
+        /// <summary>
+        /// Update movement of micro-saccade if needed
+        /// </summary>
+        /// <param name="deltaTime"></param>
         private void UpdateSaccade(float deltaTime)
         {
             if (remainingTimeOfThisSaccade > 0)
@@ -184,6 +203,7 @@ namespace Karenia.GetTapped.Com3d2
                 var saccadeTime = Mathf.Min(deltaTime, remainingTimeOfThisSaccade);
                 remainingTimeOfThisSaccade -= deltaTime;
 
+                // Generate direction vector.
                 var quat = new Vector2(Mathf.Cos(mSaccadeAxis), Mathf.Sin(mSaccadeAxis)) * (saccadeTime * mSaccadeSpeed);
                 curDelta -= quat;
 
@@ -191,13 +211,19 @@ namespace Karenia.GetTapped.Com3d2
             }
         }
 
-        private void UpdateDrift(float deltaT)
+        /// <summary>
+        /// Update movement by random drifting
+        /// </summary>
+        /// <param name="deltaTime"></param>
+        private void UpdateDrift(float deltaTime)
         {
+            // Drift direction is current drift direction plus some deviation
             curDriftDirection += (UnityEngine.Random.value * 2 - 1) * config.DriftDirectionRange.Value;
             curDriftDirection %= 2 * Mathf.PI;
             curDriftSpeed = GaussianRandom(config.DriftSpeed.Value, config.DriftSpeedStdDev.Value) * Mathf.Deg2Rad;
 
-            curDelta += new Vector2(Mathf.Cos(curDriftDirection), Mathf.Sin(curDriftDirection)) * curDriftSpeed * deltaT;
+            // Calculate drift delta
+            curDelta += new Vector2(Mathf.Cos(curDriftDirection), Mathf.Sin(curDriftDirection)) * curDriftSpeed * deltaTime;
 
             if (Plugin.Instance.EyeConfig.DebugLog.Value) Plugin.Instance.Logger.LogInfo($"Drift: {curDriftSpeed} @ {curDriftDirection * Mathf.Rad2Deg}deg");
         }
@@ -215,13 +241,18 @@ namespace Karenia.GetTapped.Com3d2
         //    curDelta *= quat;
         //}
 
-        public Vector2 Tick(float deltaT)
+        /// <summary>
+        /// Update model and return calculated delta on this frame
+        /// </summary>
+        /// <param name="deltaTime">Time passed (in seconds) after last <c>Tick()</c></param>
+        /// <returns>Euler angle delta in <c>x</c> and <c>z</c> direction relative to idle position</returns>
+        public Vector2 Tick(float deltaTime)
         {
-            timeTillNextSaccade -= deltaT;
+            timeTillNextSaccade -= deltaTime;
             if (timeTillNextSaccade <= 0) SetNextSaccade();
-            UpdateSaccade(deltaT);
+            UpdateSaccade(deltaTime);
 
-            UpdateDrift(deltaT);
+            UpdateDrift(deltaTime);
 
             //timeTillNextTremor -= deltaT;
             //if (timeTillNextTremor <= 0) SetNextTremor();
@@ -232,7 +263,7 @@ namespace Karenia.GetTapped.Com3d2
 
     public static class EyeMovementHook
     {
-        private static readonly Dictionary<TBody, EyeMovementInfo> eyeInfoRepo = new Dictionary<TBody, EyeMovementInfo>();
+        private static readonly Dictionary<TBody, EyeMovementState> eyeInfoRepo = new Dictionary<TBody, EyeMovementState>();
 
         private static string FormatMaidName(Maid maid) => $"{maid?.status?.firstName} {maid?.status?.lastName}";
 
@@ -250,19 +281,20 @@ namespace Karenia.GetTapped.Com3d2
             }
 
             var delta = info.Tick(Time.deltaTime);
-            //eulerAngles += delta.eulerAngles; 
 
-            //Vector3 eulerAngles = delta.eulerAngles;
             var eulerAngles = new Vector3(delta.x, 0, delta.y);
 
+            // Revert left and right eye angle to raw state
             var revertQuatL = Quaternion.Euler(0f, -___EyeEulerAngle.x * 0.2f + ___m_editYorime, -___EyeEulerAngle.z * 0.1f);
             var revertQuatR = Quaternion.Euler(0f, ___EyeEulerAngle.x * 0.2f + ___m_editYorime, ___EyeEulerAngle.z * 0.1f);
 
             __instance.trsEyeL.localRotation *= Quaternion.Inverse(revertQuatL);
             __instance.trsEyeR.localRotation *= Quaternion.Inverse(revertQuatR);
 
+            // Add original euler angle to movement
             eulerAngles += ___EyeEulerAngle;
 
+            // Recalculate rotation
             __instance.trsEyeL.localRotation *= Quaternion.Euler(0f, -eulerAngles.x * 0.2f + ___m_editYorime, -eulerAngles.z * 0.1f);
             __instance.trsEyeR.localRotation *= Quaternion.Euler(0f, eulerAngles.x * 0.2f + ___m_editYorime, eulerAngles.z * 0.1f);
         }
@@ -288,7 +320,7 @@ namespace Karenia.GetTapped.Com3d2
         public static void InitEyeInfo(Maid __instance)
         {
             if (__instance.boMAN) return;
-            eyeInfoRepo.Add(__instance.body0, new EyeMovementInfo(Plugin.Instance.EyeConfig));
+            eyeInfoRepo.Add(__instance.body0, new EyeMovementState(Plugin.Instance.EyeConfig));
             Plugin.Instance.Logger.LogInfo($"Initialized eye info at {FormatMaidName(__instance)}");
         }
 
@@ -301,6 +333,7 @@ namespace Karenia.GetTapped.Com3d2
 
         private static bool patched = false;
 
+        // obsolete method
         //[HarmonyTranspiler, HarmonyPatch(typeof(TBody), "MoveHeadAndEye")]
         public static IEnumerable<CodeInstruction> AddFixationalEyeMovement(IEnumerable<CodeInstruction> instructions)
         {
