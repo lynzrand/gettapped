@@ -1,53 +1,10 @@
-﻿using BepInEx;
-using BepInEx.Configuration;
-using System;
-using HarmonyLib;
+﻿using BepInEx.Configuration;
+using BepInEx.Logging;
 using UnityEngine;
-using System.Collections.Generic;
-using System.Reflection.Emit;
-using System.Linq;
-using Karenia.GetTapped.Core;
+using static Karenia.FixEyeMov.Core.MathfExt;
 
-using static Karenia.GetTapped.Com3d2.MathfExt;
-
-namespace Karenia.GetTapped.Com3d2
+namespace Karenia.FixEyeMov.Core
 {
-    [BepInPlugin(id, projectName, version)]
-    public class Plugin : BaseUnityPlugin
-    {
-        public const string id = "cc.karenia.gettapped.com3d2";
-        public const string projectName = "GetTapped.COM3D2";
-        public const string version = "0.1.0";
-
-        public Plugin()
-        {
-            Instance = this;
-            Config = new PluginConfig();
-            Config.BindConfig(base.Config);
-            EyeConfig = new EyeMovementConfig();
-            EyeConfig.Bind(base.Config);
-
-            Logger = BepInEx.Logging.Logger.CreateLogSource("GetTapped");
-            var harmony = new Harmony(id);
-            Core = new PluginCore();
-
-            harmony.PatchAll(typeof(Hook));
-        }
-
-
-        public static Plugin Instance { get; private set; }
-        public new PluginConfig Config { get; set; }
-        public EyeMovementConfig EyeConfig { get; private set; }
-        public new BepInEx.Logging.ManualLogSource Logger { get; private set; }
-        public IGetTappedPlugin Core { get; private set; }
-
-        public ConfigEntry<bool> PluginEnabled { get => Config.PluginEnabled; }
-        public ConfigEntry<bool> SingleTapTranslate { get => Config.SingleTapTranslate; }
-        public ConfigEntry<float> RotationSensitivity { get => Config.RotationSensitivity; }
-        public ConfigEntry<float> TranslationSensitivity { get => Config.TranslationSensitivity; }
-        public ConfigEntry<float> ZoomSensitivity { get => Config.ZoomSensitivity; }
-    }
-
     public class EyeMovementConfig
     {
         /*
@@ -112,13 +69,14 @@ namespace Karenia.GetTapped.Com3d2
         }
     }
 
-    public static class Hook
-    {
-
-    }
-
     public static class MathfExt
     {
+        /// <summary>
+        /// Generate Gaussian random number
+        /// </summary>
+        /// <param name="mean">Mean value</param>
+        /// <param name="stdDev">Standard Deviation</param>
+        /// <returns></returns>
         public static float GaussianRandom(float mean, float stdDev)
         {
             //uniform [0,1] random doubles
@@ -140,12 +98,14 @@ namespace Karenia.GetTapped.Com3d2
     /// </summary>
     public class EyeMovementState
     {
-        public EyeMovementState(EyeMovementConfig config)
+        public EyeMovementState(EyeMovementConfig config, BepInEx.Logging.ManualLogSource logger = null)
         {
             this.config = config;
+            this.logger = logger;
         }
 
         private readonly EyeMovementConfig config;
+        private readonly ManualLogSource logger;
 
         Vector2 curDelta = Vector2.zero;
         float curDriftDirection = UnityEngine.Random.Range(0f, Mathf.PI * 2);
@@ -183,7 +143,7 @@ namespace Karenia.GetTapped.Com3d2
             // Set remaining time
             remainingTimeOfThisSaccade = angleToCenter / mSaccadeSpeed;
 
-            if (Plugin.Instance.EyeConfig.DebugLog.Value) Plugin.Instance.Logger.LogInfo($"Saccade: {angleToCenter} @ {mSaccadeAxis * Mathf.Rad2Deg}deg");
+            if (config.DebugLog.Value) logger.LogInfo($"Saccade: {angleToCenter} @ {mSaccadeAxis * Mathf.Rad2Deg}deg");
         }
 
         /// <summary>
@@ -201,7 +161,7 @@ namespace Karenia.GetTapped.Com3d2
                 var quat = new Vector2(Mathf.Cos(mSaccadeAxis), Mathf.Sin(mSaccadeAxis)) * (saccadeTime * mSaccadeSpeed);
                 curDelta -= quat;
 
-                if (Plugin.Instance.EyeConfig.DebugLog.Value) Plugin.Instance.Logger.LogInfo($"Performing Saccade: {saccadeTime * mSaccadeSpeed * Mathf.Rad2Deg} @ {mSaccadeAxis * Mathf.Rad2Deg}deg");
+                if (config.DebugLog.Value) logger.LogInfo($"Performing Saccade: {saccadeTime * mSaccadeSpeed * Mathf.Rad2Deg} @ {mSaccadeAxis * Mathf.Rad2Deg}deg");
             }
         }
 
@@ -219,9 +179,10 @@ namespace Karenia.GetTapped.Com3d2
             // Calculate drift delta
             curDelta += new Vector2(Mathf.Cos(curDriftDirection), Mathf.Sin(curDriftDirection)) * curDriftSpeed * deltaTime;
 
-            if (Plugin.Instance.EyeConfig.DebugLog.Value) Plugin.Instance.Logger.LogInfo($"Drift: {curDriftSpeed} @ {curDriftDirection * Mathf.Rad2Deg}deg");
+            if (config.DebugLog.Value) logger.LogInfo($"Drift: {curDriftSpeed} @ {curDriftDirection * Mathf.Rad2Deg}deg");
         }
 
+        // Tremors are disabled because they are too fast
         //private void SetNextTremor()
         //{
         //    var time = GaussianRandom(config.TremorInterval.Value, config.TremorStdDev.Value);
@@ -254,7 +215,5 @@ namespace Karenia.GetTapped.Com3d2
             return this.curDelta;
         }
     }
-
-
 
 }

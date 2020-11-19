@@ -19,6 +19,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FixKPlug", "FixKPlug\FixKPl
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GetTapped.com3d2", "GetTapped.com3d2\GetTapped.com3d2.csproj", "{C0E0C8BF-9888-401E-9A09-BD125BB311CD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FixEyeMov.Core", "FixationalEyeMovement.Core\FixEyeMov.Core.csproj", "{C4CF8729-5EE1-4085-8CD3-64D7160E758F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FixEyeMov.com3d2", "FixationalEyeMovement.com3d2\FixEyeMov.com3d2.csproj", "{9CBF3F22-A0D0-48CF-9F27-79AD19981A39}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -45,6 +49,14 @@ Global
 		{C0E0C8BF-9888-401E-9A09-BD125BB311CD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C0E0C8BF-9888-401E-9A09-BD125BB311CD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C0E0C8BF-9888-401E-9A09-BD125BB311CD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C4CF8729-5EE1-4085-8CD3-64D7160E758F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C4CF8729-5EE1-4085-8CD3-64D7160E758F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C4CF8729-5EE1-4085-8CD3-64D7160E758F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C4CF8729-5EE1-4085-8CD3-64D7160E758F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9CBF3F22-A0D0-48CF-9F27-79AD19981A39}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9CBF3F22-A0D0-48CF-9F27-79AD19981A39}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9CBF3F22-A0D0-48CF-9F27-79AD19981A39}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9CBF3F22-A0D0-48CF-9F27-79AD19981A39}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
