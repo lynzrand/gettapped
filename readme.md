@@ -45,3 +45,11 @@ If you are going to build FixKPlug, you also need `kPlug.dll` and `ExtensibleSav
 - Hit "Build" really hard.
 - Your output should be located in `Release/<project-name>`.
 - Install and enjoy!
+
+## License
+
+All plugin mods are licenced under [the MIT license](https://opensource.org/licenses/MIT).
+
+Any other resource (e.g. models, textures, etc.) are licensed under [CC BY-SA 4.0 License](https://creativecommons.org/licenses/by-sa/4.0/).
+
+Copyright (c) 2019-2020 Karenia Works.
