@@ -143,7 +143,8 @@ namespace Karenia.FixEyeMov.Core
             // Set remaining time
             remainingTimeOfThisSaccade = angleToCenter / mSaccadeSpeed;
 
-            if (config.DebugLog.Value) logger.LogInfo($"Saccade: {angleToCenter} @ {mSaccadeAxis * Mathf.Rad2Deg}deg");
+            if (config.DebugLog.Value && logger != null)
+                logger.LogInfo($"Saccade: {angleToCenter} @ {mSaccadeAxis * Mathf.Rad2Deg}deg");
         }
 
         /// <summary>
@@ -161,7 +162,8 @@ namespace Karenia.FixEyeMov.Core
                 var quat = new Vector2(Mathf.Cos(mSaccadeAxis), Mathf.Sin(mSaccadeAxis)) * (saccadeTime * mSaccadeSpeed);
                 curDelta -= quat;
 
-                if (config.DebugLog.Value) logger.LogInfo($"Performing Saccade: {saccadeTime * mSaccadeSpeed * Mathf.Rad2Deg} @ {mSaccadeAxis * Mathf.Rad2Deg}deg");
+                if (config.DebugLog.Value && logger != null)
+                    logger.LogInfo($"Performing Saccade: {saccadeTime * mSaccadeSpeed * Mathf.Rad2Deg} @ {mSaccadeAxis * Mathf.Rad2Deg}deg");
             }
         }
 
@@ -179,7 +181,8 @@ namespace Karenia.FixEyeMov.Core
             // Calculate drift delta
             curDelta += new Vector2(Mathf.Cos(curDriftDirection), Mathf.Sin(curDriftDirection)) * curDriftSpeed * deltaTime;
 
-            if (config.DebugLog.Value) logger.LogInfo($"Drift: {curDriftSpeed} @ {curDriftDirection * Mathf.Rad2Deg}deg");
+            if (config.DebugLog.Value && logger != null)
+                logger.LogInfo($"Drift: {curDriftSpeed} @ {curDriftDirection * Mathf.Rad2Deg}deg");
         }
 
         // Tremors are disabled because they are too fast
