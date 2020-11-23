@@ -47,11 +47,11 @@ namespace Karenia.FixEyeMov.Com3d2
             if (__instance.boMAN) return;
             if (!Plugin.Instance.EyeConfig.Enabled.Value) return;
 
-            if (!eyeInfoRepo.TryGetValue(__instance, out var info))
-            {
-                Plugin.Instance.Logger.LogWarning($"Here's a female without init! name: {FormatMaidName(__instance.maid)}");
-                return;
-            }
+            // abort when instance is not initialized
+            if (__instance.trsEyeL == null || __instance.trsEyeR == null) return;
+
+            // abort when instance is not registered
+            if (!eyeInfoRepo.TryGetValue(__instance, out var info)) return;
 
             var delta = info.Tick(Time.deltaTime);
 
