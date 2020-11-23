@@ -33,6 +33,6 @@
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
     <MakeDir Directories="../Release/GetTappedCom3d2/BepInEx/plugins" />
-    <Copy SourceFiles="./$(OutDir)GetTapped.com3d2.dll;./$(OutDir)GetTapped.com3d2.pdb;./$(OutDir)GetTapped-Core.dll" DestinationFolder="../Release/GetTappedCom3d2/BepInEx/plugins" />
+    <Copy SourceFiles="./$(OutDir)GetTapped.com3d2.dll;./$(OutDir)GetTapped-Core.dll" DestinationFolder="../Release/GetTappedCom3d2/BepInEx/plugins" />
   </Target>
 </Project>
