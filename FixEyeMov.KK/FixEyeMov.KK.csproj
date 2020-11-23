@@ -20,7 +20,7 @@
       <HintPath>..\reference\UnityEngine.unity5.dll</HintPath>
     </Reference>
     <Reference Include="*">
-      <HintPath>..\reference\games\com3d2\Assembly-CSharp.dll</HintPath>
+      <HintPath>..\reference\games\koikatsu\Assembly-CSharp.dll</HintPath>
     </Reference>
   </ItemGroup>
 
@@ -35,7 +35,7 @@
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <MakeDir Directories="../Release/FixEyeMov.Com3d2/BepInEx/plugins" />
-    <Copy SourceFiles="./$(OutDir)FixEyeMov.com3d2.dll;./$(OutDir)FixEyeMov.Core.dll" DestinationFolder="../Release/FixEyeMov.Com3d2/BepInEx/plugins" />
+    <MakeDir Directories="../Release/FixEyeMov.KK/BepInEx/plugins" />
+    <Copy SourceFiles="./$(OutDir)FixEyeMov.KK.dll;./$(OutDir)FixEyeMov.Core.dll" DestinationFolder="../Release/FixEyeMov.KK/BepInEx/plugins" />
   </Target>
 </Project>
