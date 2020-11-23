@@ -14,7 +14,7 @@ namespace Karenia.FixEyeMov.Com3d2
     {
         public const string id = "cc.karenia.fixeyemov.com3d2";
         public const string projectName = "FixationalEyeMovements.COM3D2";
-        public const string version = "0.1.0";
+        public const string version = "0.1.1";
 
         public Plugin()
         {
