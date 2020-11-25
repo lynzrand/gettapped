@@ -7,6 +7,8 @@ using System.Collections.Generic;
 using System.Reflection.Emit;
 using System.Linq;
 using Karenia.GetTapped.Core;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace Karenia.GetTapped.Com3d2
 {
@@ -164,6 +166,13 @@ namespace Karenia.GetTapped.Com3d2
 
     public static class Hook
     {
+        private static readonly List<RaycastResult> raycastResultSketchboard = new List<RaycastResult>();
+
+        private class DummyWidget : UIWidgetContainer
+        {
+            public void OnClick() { }
+        }
+
         /// <summary>
         /// This method calculates the <b>rotation</b> update of the camera.
         /// </summary>
@@ -183,7 +192,16 @@ namespace Karenia.GetTapped.Com3d2
             var plugin = Plugin.Instance;
             if (!plugin.Config.PluginEnabled.Value) return true;
 
-            var movement = plugin.Core.GetCameraMovement(plugin.SingleTapTranslate.Value);
+
+            bool isPointerOverUiChecker(Touch touch)
+            {
+                // NGUI raycasting touch input
+                // See: http://www.tasharen.com/forum/index.php?topic=138.0
+                var isPointerOverUi = UICamera.Raycast(touch.position);
+                return isPointerOverUi;
+            }
+
+            var movement = plugin.Core.GetCameraMovement(plugin.SingleTapTranslate.Value, shouldBeUntracked: isPointerOverUiChecker);
 
             if (__instance.mouseControl)
             {
@@ -233,6 +251,15 @@ namespace Karenia.GetTapped.Com3d2
                     ___m_ctrl.SaveAndLoad(___currentView, name);
                 });
             }
+        }
+
+        [HarmonyPostfix, HarmonyPatch(typeof(UIRoot), "Start")]
+        public static void AddEventSystem(UIRoot __instance)
+        {
+            __instance.gameObject.AddComponent<EventSystem>();
+            var raycaster = __instance.gameObject.AddComponent<GraphicRaycaster>();
+            raycaster.blockingObjects = GraphicRaycaster.BlockingObjects.TwoD;
+            raycaster.ignoreReversedGraphics = false;
         }
     }
 }

@@ -26,8 +26,17 @@
     <Reference Include="UnityEngine">
       <HintPath>..\reference\UnityEngine.unity5.dll</HintPath>
     </Reference>
+    <Reference Include="UnityEngine.UI" >
+      <HintPath>..\reference\UnityEngine.UI.unity5.dll</HintPath>
+    </Reference>
     <Reference Include="*">
       <HintPath>..\reference\games\com3d2\Assembly-CSharp.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Update="UnityEngine.UI">
+      <HintPath>..\reference\UnityEngine.UI.unity5.dll</HintPath>
     </Reference>
   </ItemGroup>
 
