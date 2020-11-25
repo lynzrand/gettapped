@@ -13,7 +13,7 @@ Touch to camera motion adaptor for tablet users.
 | (Plugin core)|GetTapped.Core|✅
 | KoiKatsu | GetTapped.KK| ✅
 | Insult Order | GetTapped.IO|✅
-| COM3D2 | GetTapped.com3d2 | ❌
+| COM3D2 | GetTapped.com3d2 | ✅
 
 ### FixKPlug
 
