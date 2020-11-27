@@ -10,6 +10,10 @@ using UnityEngine.SceneManagement;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Reflection;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
+using Karenia.GetTapped.Util;
+
 
 namespace Karenia.GetTapped.KK
 {
@@ -25,10 +29,12 @@ namespace Karenia.GetTapped.KK
             PluginConfig = new PluginConfig();
             PluginConfig.BindConfig(Config);
             Logger = BepInEx.Logging.Logger.CreateLogSource("GetTapped");
+            TouchDetector = new TouchPressDetector();
             Core = new PluginCore();
             Instance = this;
             harmony = new Harmony(id);
             harmony.PatchAll(typeof(Hook));
+            harmony.PatchAll(typeof(HTouchControlHook));
         }
 
         public static Plugin Instance { get; private set; }
@@ -37,6 +43,8 @@ namespace Karenia.GetTapped.KK
         public new BepInEx.Logging.ManualLogSource Logger { get; private set; }
 
         private readonly Harmony harmony;
+
+        public TouchPressDetector TouchDetector { get; private set; }
 
         public IGetTappedPlugin Core { get; private set; }
 
@@ -63,13 +71,21 @@ namespace Karenia.GetTapped.KK
 
         static int lastFrame = -1;
 
+        private static readonly List<RaycastResult> raycastResultsSketchpad = new List<RaycastResult>();
+
+        private static bool IsPointerOverUI(Touch touch)
+        {
+            return EventSystem.current.IsPointerOverGameObject(touch.fingerId);
+        }
+
         [HarmonyPostfix]
         [HarmonyPatch(typeof(BaseCameraControl), "InputTouchProc")]
         public static void PatchCameraControl(BaseCameraControl __instance)
         {
             if (lastFrame == Time.frameCount) return;
             lastFrame = Time.frameCount;
-            var movement = Plugin.Instance.Core.GetCameraMovement(forceRecalculate: true);
+
+            var movement = Plugin.Instance.Core.GetCameraMovement(shouldBeUntracked: IsPointerOverUI);
 
             if (!movement.HasMoved()) return;
             PluginConfig pluginConfig = Plugin.Instance.PluginConfig;
@@ -94,7 +110,8 @@ namespace Karenia.GetTapped.KK
             if (lastFrame == Time.frameCount) return;
             lastFrame = Time.frameCount;
             Plugin instance = Plugin.Instance;
-            var movement = instance.Core.GetCameraMovement(forceRecalculate: true);
+
+            var movement = instance.Core.GetCameraMovement(shouldBeUntracked: IsPointerOverUI);
 
             if (!movement.HasMoved()) return;
 
@@ -104,6 +121,46 @@ namespace Karenia.GetTapped.KK
             camdat.Pos += __instance.transform.TransformDirection(movement.ScreenSpaceTranslation * pluginConfig.TranslationSensitivity.Value * 0.01f);
             camdat.Rot += new Vector3(movement.ScreenSpaceRotation.y, movement.ScreenSpaceRotation.x, 0) * 0.1f * pluginConfig.RotationSensitivity.Value;
             __instance.SetCameraData(camdat);
+        }
+
+    }
+    public static class HTouchControlHook
+    {
+        private static int? speedControlLastClick = null;
+
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(HSonyu), "LoopProc")]
+        [HarmonyPatch(typeof(HHoushi), "LoopProc")]
+        [HarmonyPatch(typeof(H3PSonyu), "LoopProc")]
+        [HarmonyPatch(typeof(H3PHoushi), "LoopProc")]
+        [HarmonyPatch(typeof(H3PDarkSonyu), "LoopProc")]
+        [HarmonyPatch(typeof(H3PDarkHoushi), "LoopProc")]
+        public static void HSpeedControl(HSprite ___sprite, HFlag ___flags, HActionBase __instance)
+        {
+            Plugin.Instance.Logger.LogInfo($"Cursor on pad: {___sprite.IsCursorOnPad()}");
+            if (___sprite.IsCursorOnPad() && Input.touchCount == 1)
+            {
+                var canvas = GameObject.Find("Canvas")?.GetComponent<Canvas>();
+                float ySize = 100f;
+                if (canvas != null) ySize *= canvas.scaleFactor;
+
+                int fingerId = Input.GetTouch(0).fingerId;
+                var state = Plugin.Instance.TouchDetector.GetTouchTime(fingerId);
+                if (state.hasMoved)
+                {
+                    ___flags.SpeedUpClick(Input.GetTouch(0).deltaPosition.y / ySize, 1f);
+                }
+                else
+                {
+                    if (speedControlLastClick != fingerId)
+                    {
+                        state.onLongPressCallback += (touch) =>
+                        {
+                            //__instance.MotionChange()
+                        };
+                    }
+                }
+            }
         }
     }
 
