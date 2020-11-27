@@ -25,6 +25,9 @@
     <Reference Include="UnityEngine">
       <HintPath>..\reference\UnityEngine.unity5.dll</HintPath>
     </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>..\reference\UnityEngine.UI.unity5.dll</HintPath>
+    </Reference>
     <Reference Include="*">
       <HintPath>..\reference\games\insultorder\Assembly-CSharp.dll</HintPath>
     </Reference>

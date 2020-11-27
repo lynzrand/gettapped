@@ -12,6 +12,7 @@ using System.Reflection;
 using Karenia.GetTapped.Core;
 using UnityEngine.SceneManagement;
 using System.Collections;
+using UnityEngine.EventSystems;
 
 namespace Karenia.GetTapped.IO
 {
@@ -48,6 +49,12 @@ namespace Karenia.GetTapped.IO
 
     public static class Hook
     {
+        private static bool IsPointerOverUI(Touch touch)
+        {
+            return EventSystem.current.IsPointerOverGameObject(touch.fingerId);
+        }
+
+
         /// <summary>
         /// This method calculates the <b>rotation</b> update of the camera.
         /// </summary>
@@ -65,7 +72,7 @@ namespace Karenia.GetTapped.IO
             var plugin = Plugin.Instance;
             if (!plugin.Config.PluginEnabled.Value) return true;
 
-            var movement = plugin.Core.GetCameraMovement(plugin.SingleTapTranslate.Value);
+            var movement = plugin.Core.GetCameraMovement(plugin.SingleTapTranslate.Value, shouldBeUntracked: IsPointerOverUI);
 
             ___xVelocity += movement.ScreenSpaceRotation.x * plugin.RotationSensitivity.Value;
             ___yVelocity += movement.ScreenSpaceRotation.y * plugin.RotationSensitivity.Value;
@@ -84,7 +91,7 @@ namespace Karenia.GetTapped.IO
             var plugin = Plugin.Instance;
             if (!plugin.Config.PluginEnabled.Value) return true;
 
-            var movement = plugin.Core.GetCameraMovement(plugin.SingleTapTranslate.Value);
+            var movement = plugin.Core.GetCameraMovement(plugin.SingleTapTranslate.Value, shouldBeUntracked: IsPointerOverUI);
 
             ___xDeg += movement.ScreenSpaceRotation.x * plugin.RotationSensitivity.Value;
             ___yDeg += movement.ScreenSpaceRotation.y * plugin.RotationSensitivity.Value;
@@ -103,7 +110,7 @@ namespace Karenia.GetTapped.IO
             var plugin = Plugin.Instance;
             if (!plugin.Config.PluginEnabled.Value) return true;
 
-            var movement = plugin.Core.GetCameraMovement(plugin.SingleTapTranslate.Value);
+            var movement = plugin.Core.GetCameraMovement(plugin.SingleTapTranslate.Value, shouldBeUntracked: IsPointerOverUI);
 
             ___hor += movement.ScreenSpaceRotation.x * plugin.RotationSensitivity.Value;
             ___ver += movement.ScreenSpaceRotation.y * plugin.RotationSensitivity.Value;
