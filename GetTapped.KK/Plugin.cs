@@ -22,7 +22,7 @@ namespace Karenia.GetTapped.KK
     {
         public const string id = "cc.karenia.gettapped.kk";
         public const string projectName = "GetTapped.KK";
-        public const string version = "0.1.1";
+        public const string version = "0.2.0";
 
         public Plugin()
         {
@@ -34,7 +34,8 @@ namespace Karenia.GetTapped.KK
             Instance = this;
             harmony = new Harmony(id);
             harmony.PatchAll(typeof(Hook));
-            harmony.PatchAll(typeof(HTouchControlHook));
+            // FIXME: It's not working now
+            //harmony.PatchAll(typeof(HTouchControlHook));
         }
 
         public static Plugin Instance { get; private set; }
@@ -124,6 +125,9 @@ namespace Karenia.GetTapped.KK
         }
 
     }
+
+    // FIXME: Controlling speed via sliding on related menu doesn't work yet
+#if false
     public static class HTouchControlHook
     {
         private static int? speedControlLastClick = null;
@@ -163,6 +167,6 @@ namespace Karenia.GetTapped.KK
             }
         }
     }
-
+#endif
 }
 
