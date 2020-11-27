@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net35</TargetFramework>
-    <Version>0.1.2</Version>
+    <Version>0.2.0</Version>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -26,7 +26,7 @@
     <Reference Include="UnityEngine">
       <HintPath>..\reference\UnityEngine.unity5.dll</HintPath>
     </Reference>
-    <Reference Include="UnityEngine.UI" >
+    <Reference Include="UnityEngine.UI">
       <HintPath>..\reference\UnityEngine.UI.unity5.dll</HintPath>
     </Reference>
     <Reference Include="*">

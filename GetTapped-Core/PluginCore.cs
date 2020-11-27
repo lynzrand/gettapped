@@ -35,6 +35,8 @@ namespace Karenia.GetTapped.Core
 
     public class PluginCore : IGetTappedPlugin
     {
+        public static string Version = "0.2.0";
+
         CameraMovement? calculated = null;
         int lastFrame = -1;
 
