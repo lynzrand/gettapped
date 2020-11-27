@@ -6,7 +6,7 @@ Various plugins and fixes, for various Unity-based eroges.
 
 ### GetTapped
 
-Touch to camera motion adaptor for tablet users.
+Touch to camera motion adaptor for tablet users. May also contain fixes or features for touch environments.
 
 | Game     | Project | Status |
 |----------|---------|---------|
@@ -32,19 +32,31 @@ Generate fixational eye movement for characters to make them more life-like.
 |(Plugin core)|FixEyeMov.Core |✅
 |COM3D2 |FixEyeMov.com3d2|✅
 
+## Installing
+
+**Requires:**
+
+- BepInEx > 5.3
+
+Steps:
+
+1. Copy `BepInEx` into game folder, overwrite files if necessary
+2. Run game
+3. ???
+4. Success!
+
 ## Before building
 
 Copy the `Assembly-CSharp.dll` of your designated game to `reference/<your-game-name>/`.
 
 If you are going to build FixKPlug, you also need `kPlug.dll` and `ExtensibleSaveFormat.dll` in there.
 
-
 ## Building
 
-- Open project in Visual Studio.
-- Hit "Build" really hard.
-- Your output should be located in `Release/<project-name>`.
-- Install and enjoy!
+1. Open project in Visual Studio.
+2. Hit "Build" really hard.
+3. Your output should be located in `Release/<project-name>`.
+4. Install and enjoy!
 
 ## License
 
