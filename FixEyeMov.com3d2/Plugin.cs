@@ -6,6 +6,7 @@ using System.Reflection.Emit;
 using System.Linq;
 using Karenia.FixEyeMov.Core;
 using BepInEx;
+using System.Reflection;
 
 namespace Karenia.FixEyeMov.Com3d2
 {
@@ -19,8 +20,7 @@ namespace Karenia.FixEyeMov.Com3d2
         public Plugin()
         {
             Instance = this;
-            EyeConfig = new EyeMovementConfig();
-            EyeConfig.Bind(base.Config);
+            EyeConfig = new EyeMovementConfig(base.Config);
 
             Logger = BepInEx.Logging.Logger.CreateLogSource("FixEyeMov");
             var harmony = new Harmony(id);
@@ -28,24 +28,36 @@ namespace Karenia.FixEyeMov.Com3d2
             harmony.PatchAll(typeof(EyeMovementHook));
         }
 
-        public static Plugin Instance { get; private set; }
+        public static Plugin? Instance { get; private set; }
         public EyeMovementConfig EyeConfig { get; private set; }
         public new BepInEx.Logging.ManualLogSource Logger { get; private set; }
     }
 
+    public class CharacterState
+    {
+        public CharacterState(EyeMovementConfig config, BepInEx.Logging.ManualLogSource? logger = null)
+        {
+            eyeMovement = new EyeMovementState(config, logger);
+        }
+
+        public EyeMovementState eyeMovement;
+        public bool blinkedInLastFrame = false;
+    }
 
     public static class EyeMovementHook
     {
-        private static readonly Dictionary<TBody, EyeMovementState> eyeInfoRepo = new Dictionary<TBody, EyeMovementState>();
+        private static readonly Dictionary<TBody, CharacterState> eyeInfoRepo = new Dictionary<TBody, CharacterState>();
 
         private static string FormatMaidName(Maid maid) => $"{maid?.status?.firstName} {maid?.status?.lastName}";
+
+        private static FieldInfo blinkParam = AccessTools.Field(typeof(Maid), "MabatakiVal");
 
         [HarmonyPostfix, HarmonyPatch(typeof(TBody), "MoveHeadAndEye")]
         public static void FixationalEyeMovement(TBody __instance, Quaternion ___quaDefEyeL, Quaternion ___quaDefEyeR, float ___m_editYorime, Vector3 ___EyeEulerAngle)
         {
             // Men have no eyes so nothing to see
             if (__instance.boMAN) return;
-            if (!Plugin.Instance.EyeConfig.Enabled.Value) return;
+            if (Plugin.Instance == null || !Plugin.Instance.EyeConfig.Enabled.Value) return;
 
             // Abort when head and eye is locked
             if (__instance.boLockHeadAndEye) return;
@@ -56,7 +68,16 @@ namespace Karenia.FixEyeMov.Com3d2
             // abort when instance is not registered
             if (!eyeInfoRepo.TryGetValue(__instance, out var info)) return;
 
-            var delta = info.Tick(Time.deltaTime);
+            bool forceSaccade = false;
+            if (__instance.maid != null)
+            {
+                float eyeCloseness = (float)blinkParam.GetValue(__instance.maid);
+                var isBlinking = eyeCloseness > 0.8f;
+                forceSaccade = isBlinking && !info.blinkedInLastFrame;
+                info.blinkedInLastFrame = isBlinking;
+            }
+
+            var delta = info.eyeMovement.Tick(Time.deltaTime, forceSaccade: forceSaccade);
 
             var eulerAngles = new Vector3(delta.x, 0, delta.y);
 
@@ -79,15 +100,16 @@ namespace Karenia.FixEyeMov.Com3d2
         public static void InitEyeInfo(Maid __instance)
         {
             if (__instance.boMAN) return;
-            eyeInfoRepo.Add(__instance.body0, new EyeMovementState(Plugin.Instance.EyeConfig));
-            Plugin.Instance.Logger.LogInfo($"Initialized eye info at {FormatMaidName(__instance)}");
+            if (Plugin.Instance == null) return;
+            eyeInfoRepo.Add(__instance.body0, new CharacterState(Plugin.Instance.EyeConfig));
+            Plugin.Instance?.Logger.LogInfo($"Initialized eye info at {FormatMaidName(__instance)}");
         }
 
         [HarmonyPostfix, HarmonyPatch(typeof(TBody), "OnDestroy")]
         public static void UnInitEyeInfo(TBody __instance)
         {
             eyeInfoRepo.Remove(__instance);
-            Plugin.Instance.Logger.LogInfo($"Uninitialized eye info at {FormatMaidName(__instance.maid)}");
+            Plugin.Instance?.Logger.LogInfo($"Uninitialized eye info at {FormatMaidName(__instance.maid)}");
         }
     }
 }

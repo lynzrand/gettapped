@@ -19,12 +19,6 @@ namespace Karenia.FixEyeMov.Core
          * msaccade_speed (float) – micro-saccade speed in degree/second
          */
 
-        //public ConfigEntry<float> TremorInterval { get; private set; }
-
-        //public ConfigEntry<float> TremorStdDev { get; private set; }
-
-        //public ConfigEntry<float> TremorAmplitude { get; private set; }
-
         public ConfigEntry<float> DriftSpeed { get; private set; }
 
         public ConfigEntry<float> DriftSpeedStdDev { get; private set; }
@@ -49,7 +43,7 @@ namespace Karenia.FixEyeMov.Core
 
         public ConfigEntry<bool> Enabled { get; private set; }
 
-        public void Bind(ConfigFile config)
+        public EyeMovementConfig(ConfigFile config)
         {
             const string section = "Basic Settings";
             const string fineTuneSection = "Fine Tuning";
@@ -109,14 +103,14 @@ namespace Karenia.FixEyeMov.Core
     /// </summary>
     public class EyeMovementState
     {
-        public EyeMovementState(EyeMovementConfig config, BepInEx.Logging.ManualLogSource logger = null)
+        public EyeMovementState(EyeMovementConfig config, BepInEx.Logging.ManualLogSource? logger = null)
         {
             this.config = config;
             this.logger = logger;
         }
 
         private readonly EyeMovementConfig config;
-        private readonly ManualLogSource logger;
+        private readonly ManualLogSource? logger;
 
         Vector2 curDelta = Vector2.zero;
         float curDriftDirection = UnityEngine.Random.Range(0f, Mathf.PI * 2);
