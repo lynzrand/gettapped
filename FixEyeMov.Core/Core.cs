@@ -43,29 +43,30 @@ namespace Karenia.FixEyeMov.Core
 
         public ConfigEntry<float> MSaccadeOvershootDev { get; private set; }
 
+        public ConfigEntry<float> MaxOffsetAngle { get; private set; }
+
         public ConfigEntry<bool> DebugLog { get; private set; }
 
         public ConfigEntry<bool> Enabled { get; private set; }
 
         public void Bind(ConfigFile config)
         {
-            const string section = "EyeMovement";
+            const string section = "Basic Settings";
+            const string fineTuneSection = "Fine Tuning";
             Enabled = config.Bind(section, nameof(Enabled), true);
+            DebugLog = config.Bind(section, nameof(DebugLog), false);
 
-            //TremorInterval = config.Bind(section, nameof(TremorInterval), 0.012f);
-            //TremorStdDev = config.Bind(section, nameof(TremorStdDev), 0.001f);
-            //TremorAmplitude = config.Bind(section, nameof(TremorAmplitude), 0.05f);
-            DriftSpeed = config.Bind(section, nameof(DriftSpeed), 800f, "Eye drift mean speed (degrees/second)");
-            DriftSpeedStdDev = config.Bind(section, nameof(DriftSpeedStdDev), 200f, "Eye drift speed standard deviation");
-            DriftDirectionRange = config.Bind(section, nameof(DriftDirectionRange), 100f, "Eye drift direction change range");
-            MSaccadeInterval = config.Bind(section, nameof(MSaccadeInterval), 0.8f, "Micro-saccade mean interval (seconds)");
-            MSaccadeIntervalStdDev = config.Bind(section, nameof(MSaccadeIntervalStdDev), 0.6f, "Micro-saccade mean interval");
-            MSaccadeDirectionDev = config.Bind(section, nameof(MSaccadeDirectionDev), 40f, "Micro-saccade direction standard deviation (degrees)");
-            MSaccadeSpeed = config.Bind(section, nameof(MSaccadeSpeed), 10000f, "Micro-saccade mean speed (degrees/second)");
-            MSaccadeSpeedStdDev = config.Bind(section, nameof(MSaccadeSpeedStdDev), 300f, "Micro-saccade speed standard deviation");
-            MSaccadeOvershootDev = config.Bind(section, nameof(MSaccadeOvershootDev), 0.6f, "Micro-saccade overshooting standard deviation");
+            DriftSpeed = config.Bind(fineTuneSection, nameof(DriftSpeed), 800f, "Eye drift mean speed (degrees/second)");
+            DriftSpeedStdDev = config.Bind(fineTuneSection, nameof(DriftSpeedStdDev), 200f, "Eye drift speed standard deviation");
+            DriftDirectionRange = config.Bind(fineTuneSection, nameof(DriftDirectionRange), 100f, "Eye drift direction change range");
+            MSaccadeInterval = config.Bind(fineTuneSection, nameof(MSaccadeInterval), 0.8f, "Micro-saccade mean interval (seconds)");
+            MSaccadeIntervalStdDev = config.Bind(fineTuneSection, nameof(MSaccadeIntervalStdDev), 0.6f, "Micro-saccade mean interval");
+            MSaccadeDirectionDev = config.Bind(fineTuneSection, nameof(MSaccadeDirectionDev), 40f, "Micro-saccade direction standard deviation (degrees)");
+            MSaccadeSpeed = config.Bind(fineTuneSection, nameof(MSaccadeSpeed), 10000f, "Micro-saccade mean speed (degrees/second)");
+            MSaccadeSpeedStdDev = config.Bind(fineTuneSection, nameof(MSaccadeSpeedStdDev), 300f, "Micro-saccade speed standard deviation");
+            MSaccadeOvershootDev = config.Bind(fineTuneSection, nameof(MSaccadeOvershootDev), 0.6f, "Micro-saccade overshooting factor standard deviation");
 
-            DebugLog = config.Bind(section, nameof(DebugLog), true);
+            MaxOffsetAngle = config.Bind(fineTuneSection, nameof(MaxOffsetAngle), 5f, "Max offset angle (degrees)");
         }
     }
 
@@ -86,6 +87,16 @@ namespace Karenia.FixEyeMov.Core
             var randStdNormal = Mathf.Sqrt(-2.0f * Mathf.Log(u1)) * Mathf.Sin(2.0f * Mathf.PI * u2);
             //random normal(mean,stdDev^2)
             return mean + stdDev * randStdNormal;
+        }
+
+        public static float ClampedGaussianRandom(float mean, float stdDev, float lowerBound, float higherBound)
+        {
+            return Mathf.Clamp(GaussianRandom(mean, stdDev), lowerBound, higherBound);
+        }
+
+        public static float MuClampedGaussianRandom(float mean, float stdDev, float mu)
+        {
+            return Mathf.Clamp(GaussianRandom(mean, stdDev), mean - mu * stdDev, mean + mu * stdDev);
         }
     }
 
@@ -111,7 +122,6 @@ namespace Karenia.FixEyeMov.Core
         float curDriftDirection = UnityEngine.Random.Range(0f, Mathf.PI * 2);
         float curDriftSpeed = 0;
 
-        //float timeTillNextTremor = 0;
         float timeTillNextSaccade = 0;
         float remainingTimeOfThisSaccade = 0;
         float mSaccadeSpeed;
@@ -120,7 +130,7 @@ namespace Karenia.FixEyeMov.Core
         /// <summary>
         /// Generate information for the upcoming micro-saccade
         /// </summary>
-        private void SetNextSaccade()
+        private void SetNextSaccade(float overshootDevFactor = 1.0f)
         {
             // Set time according to config
             var time = GaussianRandom(config.MSaccadeInterval.Value, config.MSaccadeIntervalStdDev.Value);
@@ -130,7 +140,7 @@ namespace Karenia.FixEyeMov.Core
             // Micro-saccade is toward center point, but with deviation.
             // Note: this angle calculated is **away from center**, reverse is done afterwards.
             mSaccadeAxis = Mathf.Atan2(curDelta.y, curDelta.x);
-            mSaccadeAxis += GaussianRandom(0, config.MSaccadeDirectionDev.Value * Mathf.Deg2Rad);
+            mSaccadeAxis += MuClampedGaussianRandom(0, config.MSaccadeDirectionDev.Value * Mathf.Deg2Rad, 3);
 
             // Generate saccade speed
             mSaccadeSpeed = GaussianRandom(config.MSaccadeSpeed.Value, config.MSaccadeSpeedStdDev.Value) * Mathf.Deg2Rad;
@@ -138,7 +148,13 @@ namespace Karenia.FixEyeMov.Core
 
             // Generate move angle with deviation
             var angleToCenter = curDelta.magnitude;
-            angleToCenter *= GaussianRandom(1f, config.MSaccadeOvershootDev.Value);
+            var maxOffsetAngle = config.MaxOffsetAngle.Value;
+            // Limit return angle inside allowed range
+            angleToCenter = ClampedGaussianRandom(
+                angleToCenter,
+                config.MSaccadeOvershootDev.Value * overshootDevFactor * angleToCenter,
+                angleToCenter - maxOffsetAngle,
+                angleToCenter + maxOffsetAngle);
 
             // Set remaining time
             remainingTimeOfThisSaccade = angleToCenter / mSaccadeSpeed;
@@ -176,7 +192,7 @@ namespace Karenia.FixEyeMov.Core
             // Drift direction is current drift direction plus some deviation
             curDriftDirection += (UnityEngine.Random.value * 2 - 1) * config.DriftDirectionRange.Value;
             curDriftDirection %= 2 * Mathf.PI;
-            curDriftSpeed = GaussianRandom(config.DriftSpeed.Value, config.DriftSpeedStdDev.Value) * Mathf.Deg2Rad;
+            curDriftSpeed = MuClampedGaussianRandom(config.DriftSpeed.Value, config.DriftSpeedStdDev.Value, 3) * Mathf.Deg2Rad;
 
             // Calculate drift delta
             curDelta += new Vector2(Mathf.Cos(curDriftDirection), Mathf.Sin(curDriftDirection)) * curDriftSpeed * deltaTime;
@@ -185,35 +201,20 @@ namespace Karenia.FixEyeMov.Core
                 logger.LogInfo($"Drift: {curDriftSpeed} @ {curDriftDirection * Mathf.Rad2Deg}deg");
         }
 
-        // Tremors are disabled because they are too fast
-        //private void SetNextTremor()
-        //{
-        //    var time = GaussianRandom(config.TremorInterval.Value, config.TremorStdDev.Value);
-        //    if (time < 0.001f) time = 0.001f;
-
-        //    var direction = UnityEngine.Random.Range(0f, 360f);
-        //    var axis = new Vector3(Mathf.Cos(direction), 0f, Mathf.Sin(direction));
-        //    var quat = Quaternion.AngleAxis(config.TremorAmplitude.Value, axis);
-
-        //    timeTillNextTremor = time;
-        //    curDelta *= quat;
-        //}
 
         /// <summary>
         /// Update model and return calculated delta on this frame
         /// </summary>
         /// <param name="deltaTime">Time passed (in seconds) after last <c>Tick()</c></param>
+        /// <param name="forceSaccade">Force a microsaccade to occur (e.g. when blinking)</param>
         /// <returns>Euler angle delta in <c>x</c> and <c>z</c> direction relative to idle position</returns>
-        public Vector2 Tick(float deltaTime)
+        public Vector2 Tick(float deltaTime, bool forceSaccade = false)
         {
             timeTillNextSaccade -= deltaTime;
-            if (timeTillNextSaccade <= 0) SetNextSaccade();
+            if (timeTillNextSaccade <= 0 || forceSaccade) SetNextSaccade(forceSaccade ? 0 : 1);
             UpdateSaccade(deltaTime);
 
             UpdateDrift(deltaTime);
-
-            //timeTillNextTremor -= deltaT;
-            //if (timeTillNextTremor <= 0) SetNextTremor();
 
             return this.curDelta;
         }
