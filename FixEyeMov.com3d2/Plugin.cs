@@ -47,6 +47,9 @@ namespace Karenia.FixEyeMov.Com3d2
             if (__instance.boMAN) return;
             if (!Plugin.Instance.EyeConfig.Enabled.Value) return;
 
+            // Abort when head and eye is locked
+            if (__instance.boLockHeadAndEye) return;
+
             // abort when instance is not initialized
             if (__instance.trsEyeL == null || __instance.trsEyeR == null) return;
 
@@ -86,79 +89,7 @@ namespace Karenia.FixEyeMov.Com3d2
             eyeInfoRepo.Remove(__instance);
             Plugin.Instance.Logger.LogInfo($"Uninitialized eye info at {FormatMaidName(__instance.maid)}");
         }
-
-        // obsolete method
-        //[HarmonyTranspiler, HarmonyPatch(typeof(TBody), "MoveHeadAndEye")]
-        //public static IEnumerable<CodeInstruction> AddFixationalEyeMovement(IEnumerable<CodeInstruction> instructions)
-        //{
-        //    if (patched) return instructions;
-        //    patched = true;
-
-        //    AssertNotNull(instructions, nameof(instructions));
-
-        //    var instList = instructions.ToList();
-        //    var targetField_trsEyeL = AccessTools.Field(typeof(TBody), nameof(TBody.trsEyeL));
-        //    var targetField_quaDefEyeL = AccessTools.Field(typeof(TBody), "quaDefEyeL");
-
-        //    AssertNotNull(targetField_trsEyeL, nameof(targetField_trsEyeL));
-        //    AssertNotNull(targetField_quaDefEyeL, nameof(targetField_quaDefEyeL));
-        //    AssertNotNull(instList, nameof(instList));
-
-        //    int targetInstruction = -1;
-
-        //    for (int i = 1; i < instList.Count - 5; i++)
-        //    {
-        //        if (instList[i].IsLdarg(0)
-        //            && instList[i + 1].LoadsField(targetField_trsEyeL)
-        //            && instList[i + 2].IsLdarg(0)
-        //            && instList[i + 3].LoadsField(targetField_quaDefEyeL)
-        //            && instList[i + 4].Is(OpCodes.Ldc_R4, (float)0)
-        //            && instList[i + 5].IsLdarg(0))
-        //        {
-        //            targetInstruction = i;
-        //            break;
-        //        }
-        //    }
-
-        //    if (targetInstruction > 0)
-        //    {
-        //        var eulerAngleField = AccessTools.Field(typeof(TBody), "EyeEulerAngle");
-        //        var hookFunction = AccessTools.Method(typeof(EyeMovementHook), nameof(FixationalEyeMovementPatch2));
-
-        //        AssertNotNull(eulerAngleField, nameof(eulerAngleField));
-        //        AssertNotNull(hookFunction, nameof(hookFunction));
-        //        AssertNotNull(targetInstruction, nameof(targetInstruction));
-
-        //        var labels = instList[targetInstruction].labels;
-        //        instList[targetInstruction].labels = new List<Label>();
-
-        //        instList.InsertRange(targetInstruction, new CodeInstruction[]
-        //        {
-        //            new CodeInstruction(OpCodes.Ldarg_0) {labels = labels},
-        //            new CodeInstruction(OpCodes.Ldarg_0) { },
-        //            new CodeInstruction(OpCodes.Ldflda, eulerAngleField),
-        //            new CodeInstruction(OpCodes.Call, hookFunction)
-        //        });
-
-        //        Plugin.Instance.Logger.LogInfo($"Patched at TBody#MoveHeadAndEye+{targetInstruction}");
-        //    }
-        //    else
-        //    {
-        //        Plugin.Instance.Logger.LogInfo("For some reason patching failed");
-        //    }
-
-        //    return instList;
-        //}
-
-        private static void AssertNotNull(object o, string name)
-        {
-            if (o == null)
-            {
-                string message = $"Unexpected: {name} is null!";
-                Plugin.Instance.Logger.LogFatal(message);
-                throw new Exception(message);
-            }
-        }
     }
-
 }
+
+
