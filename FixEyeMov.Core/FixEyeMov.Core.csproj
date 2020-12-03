@@ -4,6 +4,8 @@
   <PropertyGroup>
     <TargetFramework>net35</TargetFramework>
     <Version>0.1.1</Version>
+    <LangVersion>9</LangVersion>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
 

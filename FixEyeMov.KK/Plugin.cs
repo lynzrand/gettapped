@@ -19,8 +19,7 @@ namespace Karenia.FixEyeMov.Com3d2
         public Plugin()
         {
             Instance = this;
-            EyeConfig = new EyeMovementConfig();
-            EyeConfig.Bind(base.Config);
+            EyeConfig = new EyeMovementConfig(base.Config);
 
             Logger = BepInEx.Logging.Logger.CreateLogSource("FixEyeMov");
             var harmony = new Harmony(id);
