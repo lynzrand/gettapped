@@ -27,9 +27,9 @@
     </Reference>
   </ItemGroup>
 
-
   <ItemGroup>
     <Reference Remove="Plugin.cs" />
+    <Reference Remove="PointOfInterest.cs" />
   </ItemGroup>
 
 

@@ -92,6 +92,14 @@ namespace Karenia.FixEyeMov.Core
         {
             return Mathf.Clamp(GaussianRandom(mean, stdDev), mean - mu * stdDev, mean + mu * stdDev);
         }
+
+        public static float LogNormalRandom(float mean, float stdDev)
+        {
+            float v = Mathf.Log(1 + (stdDev * stdDev / mean / mean));
+            var mu = Mathf.Log(mean) - v / 2;
+            var sigma = Mathf.Sqrt(v);
+            return Mathf.Exp(GaussianRandom(mu, sigma));
+        }
     }
 
     /// <summary>
@@ -127,8 +135,7 @@ namespace Karenia.FixEyeMov.Core
         private void SetNextSaccade(float overshootDevFactor = 1.0f)
         {
             // Set time according to config
-            var time = GaussianRandom(config.MSaccadeInterval.Value, config.MSaccadeIntervalStdDev.Value);
-            if (time < config.MSaccadeInterval.Value / 2) time = config.MSaccadeInterval.Value;
+            var time = LogNormalRandom(config.MSaccadeInterval.Value, config.MSaccadeIntervalStdDev.Value);
             timeTillNextSaccade = time;
 
             // Micro-saccade is toward center point, but with deviation.
@@ -137,8 +144,7 @@ namespace Karenia.FixEyeMov.Core
             mSaccadeAxis += MuClampedGaussianRandom(0, config.MSaccadeDirectionDev.Value * Mathf.Deg2Rad, 3);
 
             // Generate saccade speed
-            mSaccadeSpeed = GaussianRandom(config.MSaccadeSpeed.Value, config.MSaccadeSpeedStdDev.Value) * Mathf.Deg2Rad;
-            if (mSaccadeSpeed < 0) mSaccadeSpeed = config.MSaccadeSpeed.Value * Mathf.Deg2Rad;
+            mSaccadeSpeed = LogNormalRandom(config.MSaccadeSpeed.Value, config.MSaccadeSpeedStdDev.Value) * Mathf.Deg2Rad;
 
             // Generate move angle with deviation
             var angleToCenter = curDelta.magnitude;
@@ -186,7 +192,7 @@ namespace Karenia.FixEyeMov.Core
             // Drift direction is current drift direction plus some deviation
             curDriftDirection += (UnityEngine.Random.value * 2 - 1) * config.DriftDirectionRange.Value;
             curDriftDirection %= 2 * Mathf.PI;
-            curDriftSpeed = MuClampedGaussianRandom(config.DriftSpeed.Value, config.DriftSpeedStdDev.Value, 3) * Mathf.Deg2Rad;
+            curDriftSpeed = LogNormalRandom(config.DriftSpeed.Value, config.DriftSpeedStdDev.Value, 3) * Mathf.Deg2Rad;
 
             // Calculate drift delta
             curDelta += new Vector2(Mathf.Cos(curDriftDirection), Mathf.Sin(curDriftDirection)) * curDriftSpeed * deltaTime;

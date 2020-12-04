@@ -21,6 +21,7 @@ namespace Karenia.FixEyeMov.Com3d2
         {
             Instance = this;
             EyeConfig = new EyeMovementConfig(base.Config);
+            PoiConfig = new Poi.PoiConfig(base.Config);
 
             Logger = BepInEx.Logging.Logger.CreateLogSource("FixEyeMov");
             var harmony = new Harmony(id);
@@ -30,6 +31,7 @@ namespace Karenia.FixEyeMov.Com3d2
 
         public static Plugin? Instance { get; private set; }
         public EyeMovementConfig EyeConfig { get; private set; }
+        public Poi.PoiConfig PoiConfig { get; private set; }
         public new BepInEx.Logging.ManualLogSource Logger { get; private set; }
     }
 
@@ -38,9 +40,11 @@ namespace Karenia.FixEyeMov.Com3d2
         public CharacterState(EyeMovementConfig config, BepInEx.Logging.ManualLogSource? logger = null)
         {
             eyeMovement = new EyeMovementState(config, logger);
+            poi = new Poi.PointOfInterestManager();
         }
 
         public EyeMovementState eyeMovement;
+        Poi.PointOfInterestManager poi;
         public bool blinkedInLastFrame = false;
     }
 
