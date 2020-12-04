@@ -192,7 +192,7 @@ namespace Karenia.FixEyeMov.Core
             // Drift direction is current drift direction plus some deviation
             curDriftDirection += (UnityEngine.Random.value * 2 - 1) * config.DriftDirectionRange.Value;
             curDriftDirection %= 2 * Mathf.PI;
-            curDriftSpeed = LogNormalRandom(config.DriftSpeed.Value, config.DriftSpeedStdDev.Value, 3) * Mathf.Deg2Rad;
+            curDriftSpeed = LogNormalRandom(config.DriftSpeed.Value, config.DriftSpeedStdDev.Value) * Mathf.Deg2Rad;
 
             // Calculate drift delta
             curDelta += new Vector2(Mathf.Cos(curDriftDirection), Mathf.Sin(curDriftDirection)) * curDriftSpeed * deltaTime;

@@ -40,7 +40,6 @@ namespace Karenia.FixEyeMov.Com3d2
         public CharacterState(EyeMovementConfig config, BepInEx.Logging.ManualLogSource? logger = null)
         {
             eyeMovement = new EyeMovementState(config, logger);
-            poi = new Poi.PointOfInterestManager();
         }
 
         public EyeMovementState eyeMovement;

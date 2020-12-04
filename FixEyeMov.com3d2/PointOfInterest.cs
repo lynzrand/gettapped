@@ -204,7 +204,7 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
     {
         private static Dictionary<TBody, PointOfInterestManager> poiRepo = new Dictionary<TBody, PointOfInterestManager>();
 
-        [HarmonyPrefix, HarmonyPatch(typeof(TBody, "MoveHeadAndEye"))]
+        [HarmonyPrefix, HarmonyPatch(typeof(TBody), "MoveHeadAndEye")]
         public static void SetPoi(TBody __instance)
         {
             if (!poiRepo.TryGetValue(__instance, out var poi)) return;
@@ -218,8 +218,8 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
         [HarmonyPostfix, HarmonyPatch(typeof(Maid), "EyeToTarget")]
         public static void AddTarget(Maid __instance)
         {
-            if (!poiRepo.TryGetValue(__instance, out var poi)) return;
-            poi.AddPoi(__instance.body0.trsLookTarget)
+            if (!poiRepo.TryGetValue(__instance.body0, out var poi)) return;
+            poi.AddPoi("", new PointOfInterest(__instance.body0.trsLookTarget, 1));
         }
 
         [HarmonyPostfix, HarmonyPatch(typeof(Maid), "Initialize")]
