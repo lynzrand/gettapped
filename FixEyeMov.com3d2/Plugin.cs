@@ -7,6 +7,7 @@ using System.Linq;
 using Karenia.FixEyeMov.Core;
 using BepInEx;
 using System.Reflection;
+using static Karenia.FixEyeMov.Com3d2.CharaExt;
 
 namespace Karenia.FixEyeMov.Com3d2
 {
@@ -27,6 +28,7 @@ namespace Karenia.FixEyeMov.Com3d2
             var harmony = new Harmony(id);
 
             harmony.PatchAll(typeof(EyeMovementHook));
+            harmony.PatchAll(typeof(Poi.PoiHook));
         }
 
         public static Plugin? Instance { get; private set; }
@@ -43,15 +45,25 @@ namespace Karenia.FixEyeMov.Com3d2
         }
 
         public EyeMovementState eyeMovement;
-        Poi.PointOfInterestManager poi;
         public bool blinkedInLastFrame = false;
+    }
+
+    public static class CharaExt
+    {
+        public static string FormatMaidName(Maid maid) => $"{maid?.status?.firstName} {maid?.status?.lastName}";
+
+        public static void AssertNotNull(object? o, string name)
+        {
+            if (o == null)
+            {
+                Plugin.Instance?.Logger.LogError($"{name} is null!");
+            }
+        }
     }
 
     public static class EyeMovementHook
     {
         private static readonly Dictionary<TBody, CharacterState> eyeInfoRepo = new Dictionary<TBody, CharacterState>();
-
-        private static string FormatMaidName(Maid maid) => $"{maid?.status?.firstName} {maid?.status?.lastName}";
 
         private static FieldInfo blinkParam = AccessTools.Field(typeof(Maid), "MabatakiVal");
 

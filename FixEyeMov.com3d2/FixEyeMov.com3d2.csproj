@@ -1,44 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net35</TargetFramework>
-    <Version>0.1.1</Version>
-    <LangVersion>9</LangVersion>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net35</TargetFramework>
+		<Version>0.1.1</Version>
+		<LangVersion>9</LangVersion>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
 
 
-  <ItemGroup>
-    <Reference Include="BepInEx">
-      <HintPath>..\reference\BepInEx.dll</HintPath>
-    </Reference>
-    <Reference Include="HarmonyLib">
-      <HintPath>..\reference\0Harmony.dll</HintPath>
-    </Reference>
-    <Reference Include="BepInEx.Harmony">
-      <HintPath>..\reference\BepInEx.Harmony.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine">
-      <HintPath>..\reference\UnityEngine.unity5.dll</HintPath>
-    </Reference>
-    <Reference Include="*">
-      <HintPath>..\reference\games\com3d2\Assembly-CSharp.dll</HintPath>
-    </Reference>
-  </ItemGroup>
+	<ItemGroup>
+		<Reference Include="BepInEx">
+			<HintPath>..\reference\BepInEx.dll</HintPath>
+		</Reference>
+		<Reference Include="HarmonyLib">
+			<HintPath>..\reference\0Harmony.dll</HintPath>
+		</Reference>
+		<Reference Include="BepInEx.Harmony">
+			<HintPath>..\reference\BepInEx.Harmony.dll</HintPath>
+		</Reference>
+		<Reference Include="UnityEngine">
+			<HintPath>..\reference\UnityEngine.unity5.dll</HintPath>
+		</Reference>
+		<Reference Include="*">
+			<HintPath>..\reference\games\com3d2\Assembly-CSharp.dll</HintPath>
+		</Reference>
+	</ItemGroup>
 
-  <ItemGroup>
-    <Reference Remove="Plugin.cs" />
-    <Reference Remove="PointOfInterest.cs" />
-  </ItemGroup>
+	<ItemGroup>
+		<Reference Remove="Plugin.cs" />
+		<Reference Remove="PointOfInterest.cs" />
+	</ItemGroup>
 
 
-  <ItemGroup>
-    <ProjectReference Include="..\FixEyeMov.Core\FixEyeMov.Core.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\FixEyeMov.Core\FixEyeMov.Core.csproj" />
+	</ItemGroup>
 
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <MakeDir Directories="../Release/FixEyeMov.Com3d2/BepInEx/plugins" />
-    <Copy SourceFiles="./$(OutDir)FixEyeMov.com3d2.dll;./$(OutDir)FixEyeMov.Core.dll" DestinationFolder="../Release/FixEyeMov.Com3d2/BepInEx/plugins" />
-  </Target>
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+		<MakeDir Directories="../Release/FixEyeMov.Com3d2/BepInEx/plugins" />
+		<Copy SourceFiles="./$(OutDir)FixEyeMov.com3d2.dll;./$(OutDir)FixEyeMov.Core.dll" DestinationFolder="../Release/FixEyeMov.Com3d2/BepInEx/plugins" />
+	</Target>
 </Project>
