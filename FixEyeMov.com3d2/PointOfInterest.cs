@@ -10,6 +10,7 @@ using System.Text;
 using UnityEngine;
 using static Karenia.FixEyeMov.Core.MathfExt;
 using static Karenia.FixEyeMov.Com3d2.CharaExt;
+using System.Reflection.Emit;
 
 namespace Karenia.FixEyeMov.Com3d2.Poi
 {
@@ -434,48 +435,208 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
     {
         private static Dictionary<TBody, PointOfInterestManager> poiRepo = new Dictionary<TBody, PointOfInterestManager>();
 
-        [HarmonyPrefix, HarmonyPatch(typeof(TBody), "MoveHeadAndEye")]
-        public static void SetPoi(TBody __instance)
+        //[HarmonyPrefix, HarmonyPatch(typeof(TBody), "MoveHeadAndEye")]
+        public static Vector3? SetPoi(TBody __instance)
         {
-            if (!Plugin.Instance?.PoiConfig.Enabled.Value ?? false) return;
-            if (!poiRepo.TryGetValue(__instance, out var poi)) return;
-            if (__instance.boLockHeadAndEye) return;
+            if (!Plugin.Instance?.PoiConfig.Enabled.Value ?? false) return null;
+            if (!poiRepo.TryGetValue(__instance, out var poi)) return null;
+            if (__instance.boLockHeadAndEye) return null;
             var target = poi.Tick(Time.deltaTime);
 
-            var lineRenderer = __instance.gameObject.GetComponent<DebugLineRenderer>();
-            if (lineRenderer != null && Plugin.Instance!.PoiConfig.DebugRay.Value)
+            // TODO: I don't want to move head here, but only the eyes.
+
+            if (Plugin.Instance!.PoiConfig.DebugRay.Value)
             {
-                var list = new List<Vector3>();
-                list.Add(poi.baseTransform.position);
-                foreach (var kv in poi.PointOfInterest)
+                var lineRenderer = __instance.gameObject.GetComponent<DebugLineRenderer>();
+                if (lineRenderer != null)
                 {
-                    if (kv.Value.target is CameraTarget) continue;
-                    list.Add(kv.Value.target.WorldPosition(poi.baseTransform));
+                    var list = new List<Vector3>();
                     list.Add(poi.baseTransform.position);
-                    //Debug.DrawRay(poi.baseTransform.position, kv.Value.target.position - poi.baseTransform.position, Color.blue);
+                    foreach (var kv in poi.PointOfInterest)
+                    {
+                        if (kv.Value.target is CameraTarget) continue;
+                        list.Add(kv.Value.target.WorldPosition(poi.baseTransform));
+                        list.Add(poi.baseTransform.position);
+                        //Debug.DrawRay(poi.baseTransform.position, kv.Value.target.position - poi.baseTransform.position, Color.blue);
+                    }
+
+                    lineRenderer.SetPoints("candidate", list, Color.blue, 0.003f);
+                    var enabled = Plugin.Instance?.PoiConfig.DebugRay.Value ?? false;
+                    lineRenderer.enabled = enabled;
+
+                    if (target != null)
+                    {
+                        lineRenderer.SetPoints("target", new List<Vector3> { poi.baseTransform.position, target.WorldPosition(poi.baseTransform) }, Color.yellow, 0.005f);
+                    }
+
+                    lineRenderer.SetPoints("up", new List<Vector3> { poi.baseTransform.position, poi.baseTransform.position + poi.DirectionVector().normalized }, Color.red, 0.002f);
                 }
-
-                lineRenderer.SetPoints("candidate", list, Color.blue, 0.003f);
-                var enabled = Plugin.Instance?.PoiConfig.DebugRay.Value ?? false;
-                lineRenderer.enabled = enabled;
-
-                if (target != null)
-                {
-                    lineRenderer.SetPoints("target", new List<Vector3> { poi.baseTransform.position, target.WorldPosition(poi.baseTransform) }, Color.yellow, 0.005f);
-                }
-
-                lineRenderer.SetPoints("up", new List<Vector3> { poi.baseTransform.position, poi.baseTransform.position + poi.DirectionVector().normalized }, Color.red, 0.002f);
             }
 
             if (target != null)
             {
-                __instance.boHeadToCam = true;
-                __instance.trsLookTarget = target.Transform(poi.baseTransform);
+                //__instance.boHeadToCam = true;
+                //__instance.trsLookTarget = target.Transform(poi.baseTransform);
+                return target.WorldPosition(poi.baseTransform);
             }
             else
             {
-                __instance.boHeadToCam = false;
-                __instance.trsLookTarget = poi.MainTarget?.Transform(poi.baseTransform);
+                //__instance.boHeadToCam = false;
+                //__instance.trsLookTarget = poi.MainTarget?.Transform(poi.baseTransform);
+                return null;
+            }
+        }
+
+        public static Vector3 ChangeEyeTarget(TBody __instance, Vector3 targetPosition)
+        {
+            Console.WriteLine("detour");
+            var target = SetPoi(__instance);
+            if (target != null)
+            {
+                return target.Value;
+            }
+            else
+            {
+                return targetPosition;
+            }
+        }
+
+        [HarmonyTranspiler, HarmonyPatch(typeof(TBody), "MoveHeadAndEye")]
+        public static IEnumerable<CodeInstruction> AddEyeControlling(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
+        {
+            var code = instructions.ToList();
+
+            /*
+                if (!this.boMAN && this.trsEyeL != null && this.trsEyeR != null)
+	            {
+                    // <--- We want to insert code here
+		            Vector3 vector4 = a - this.trsHead.position;
+                    ...
+             *
+             * in IL code, it corresponding to...
+             *
+                423	05B7	ldarg.0
+                424	05B8	ldfld	bool TBody::boMAN
+                425	05BD	brtrue	572 (07C1) ret
+                426	05C2	ldarg.0
+                427	05C3	ldfld	class [UnityEngine]UnityEngine.Transform TBody::trsEyeL
+                428	05C8	ldnull
+                429	05C9	call	bool [UnityEngine]UnityEngine.Object::op_Inequality(class [UnityEngine]UnityEngine.Object, class [UnityEngine]UnityEngine.Object)
+                430	05CE	brfalse	572 (07C1) ret
+                431	05D3	ldarg.0
+                432	05D4	ldfld	class [UnityEngine]UnityEngine.Transform TBody::trsEyeR
+                433	05D9	ldnull
+                434	05DA	call	bool [UnityEngine]UnityEngine.Object::op_Inequality(class [UnityEngine]UnityEngine.Object, class [UnityEngine]UnityEngine.Object)
+                435	05DF	brfalse	572 (07C1) ret
+            ----------------------------------------> HERE!
+                436	05E4	ldloc.1
+                437	05E5	ldarg.0
+                438	05E6	ldfld	class [UnityEngine]UnityEngine.Transform TBody::trsHead
+                439	05EB	callvirt	instance valuetype [UnityEngine]UnityEngine.Vector3 [UnityEngine]UnityEngine.Transform::get_position()
+                440	05F0	call	valuetype [UnityEngine]UnityEngine.Vector3 [UnityEngine]UnityEngine.Vector3::op_Subtraction(valuetype [UnityEngine]UnityEngine.Vector3, valuetype [UnityEngine]UnityEngine.Vector3)
+                441	05F5	stloc.s	V_11 (11)
+             *
+             * So we need to find the pattern from 436 through 441.
+             */
+            var targetField_trsHead = AccessTools.Field(typeof(TBody), "trsHead");
+            var targetMethod_getPosition = AccessTools.Method(typeof(Transform), "get_position");
+            var targetMethod_getRotation = AccessTools.Method(typeof(Transform), "get_rotation");
+            var targetMethod_vecSubtract = AccessTools.Method(typeof(Vector3), "op_Subtraction", parameters: new Type[] { typeof(Vector3), typeof(Vector3) });
+            var targetMethod_quaternionInverse = AccessTools.Method(typeof(Quaternion), "Inverse");
+            var targetMethod_quaternionMultiply = AccessTools.Method(typeof(Quaternion), "op_Multiply", parameters: new Type[] { typeof(Quaternion), typeof(Vector3) });
+
+            // Find insertion target
+            int target = -1;
+            for (int i = 0; i < code.Count - 13; i++)
+            {
+                if (code[i].IsLdloc()
+                    && code[i + 1].IsLdarg(0)
+                    && code[i + 2].LoadsField(targetField_trsHead)
+                    && code[i + 3].Calls(targetMethod_getPosition)
+                    && code[i + 4].Calls(targetMethod_vecSubtract)
+                    && code[i + 5].IsStloc()
+                    && code[i + 6].IsLdarg(0)
+                    && code[i + 7].LoadsField(targetField_trsHead)
+                    && code[i + 8].Calls(targetMethod_getRotation)
+                    && code[i + 9].Calls(targetMethod_quaternionInverse)
+                    && code[i + 10].IsLdloc()
+                    && code[i + 11].Calls(targetMethod_quaternionMultiply)
+                    && code[i + 12].IsStloc())
+                {
+                    target = i; break;
+                }
+            }
+
+            // Make sure this function isn't patched before, since HarmonyTranspiler
+            // re-patches the function every time it is changed
+            var detourFunction = AccessTools.Method(typeof(PoiHook), nameof(ChangeEyeTarget));
+            bool alreadyPatched = false;
+            for (int i = 0; i < code.Count; i++)
+            {
+                if (code[i].Calls(detourFunction))
+                {
+                    alreadyPatched = true; break;
+                }
+            }
+
+            // patch code
+            if (target > 0 && !alreadyPatched)
+            {
+                var localVariableTarget = code[target];
+                var insertedInstructions = new CodeInstruction[]
+                {
+                    // TBody __instance
+                    new CodeInstruction(OpCodes.Ldarg_0),
+                    // ref Vector3 targetPosition
+                    localVariableTarget,
+                    // call ChangeEyeTarget(__instance, targetPosition)
+                    new CodeInstruction(OpCodes.Call, detourFunction),
+                    // restore target
+                    StoreLoc(localVariableTarget)
+                };
+                code.InsertRange(target, insertedInstructions);
+
+                var result = new StringBuilder("After patch inspect:");
+                result.AppendLine();
+                foreach (var inst in code)
+                {
+                    result.AppendLine(inst.ToString());
+                }
+                Plugin.Instance?.Logger.LogInfo(result.ToString());
+            }
+
+            return code;
+        }
+
+        private static CodeInstruction StoreLoc(CodeInstruction code)
+        {
+            if (code.opcode == OpCodes.Ldloc_0)
+            {
+                return new CodeInstruction(OpCodes.Stloc_0);
+            }
+            else if (code.opcode == OpCodes.Ldloc_1)
+            {
+                return new CodeInstruction(OpCodes.Stloc_1);
+            }
+            else if (code.opcode == OpCodes.Ldloc_2)
+            {
+                return new CodeInstruction(OpCodes.Stloc_2);
+            }
+            else if (code.opcode == OpCodes.Ldloc_3)
+            {
+                return new CodeInstruction(OpCodes.Stloc_3);
+            }
+            else if (code.opcode == OpCodes.Ldloc_S)
+            {
+                return new CodeInstruction(OpCodes.Stloc_S, code.operand);
+            }
+            else if (code.opcode == OpCodes.Ldloc)
+            {
+                return new CodeInstruction(OpCodes.Stloc, code.operand);
+            }
+            else
+            {
+                throw new Exception("Code is not LdLoc");
             }
         }
 
@@ -507,7 +668,7 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
             poi.MainTarget = target;
         }
 
-        [HarmonyPostfix, HarmonyPatch(typeof(Maid), "EyeToPositon")]
+        [HarmonyPostfix, HarmonyPatch(typeof(Maid), "EyeToPosition")]
         public static void RemoveTarget(Maid __instance)
         {
             if (!poiRepo.TryGetValue(__instance.body0, out var poi)) return;
