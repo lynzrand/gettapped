@@ -133,11 +133,12 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
 
         public PoiConfig(ConfigFile config, Func<Transform, Vector3, float>? targetWeightFactorFunction = null, ManualLogSource? logger = null)
         {
-            TransferCheckInterval = config.Bind(section, nameof(TransferCheckInterval), 0.4f, "Average interval (seconds) between transfers");
+            TransferCheckInterval = config.Bind(section, nameof(TransferCheckInterval), 0.3f, "Average interval (seconds) between transfers");
             TransferCheckStdDev = config.Bind(section, nameof(TransferCheckStdDev), 0.07f, "Standard deviation between transfer checks");
             NearClip = config.Bind(section, nameof(NearClip), 0.1f, "POI Near clip distance");
             FarClip = config.Bind(section, nameof(FarClip), 50f, "POI Far clip distance");
             DebugRay = config.Bind(section, nameof(DebugRay), false, "Show debug ray and stuff");
+            DebugLog = config.Bind(section, nameof(DebugLog), false, "Log debug information in console");
             Enabled = config.Bind(section, nameof(Enabled), true, "Enable POI system (changing requires scene reload)");
             if (targetWeightFactorFunction != null) TargetWeightFactorFunction = targetWeightFactorFunction;
             Logger = logger;
@@ -149,6 +150,7 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
         public ConfigEntry<float> FarClip { get; private set; }
         public ConfigEntry<bool> DebugRay { get; private set; }
         public ConfigEntry<bool> Enabled { get; private set; }
+        public ConfigEntry<bool> DebugLog { get; private set; }
 
         public Func<Transform, Vector3, float> TargetWeightFactorFunction { get; set; } = (_, _) => 1.0f;
         public ManualLogSource? Logger { get; }
@@ -228,7 +230,7 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
 
                 if (viewport.Contains(viewAngle) || kv.Value.alwaysPresent)
                 {
-                    Plugin.Instance?.Logger.LogDebug($"{GetHashCode()}: Candidates: {kv.Key}:{kv.Value.target.Name}");
+                    if (Plugin.Instance?.EyeConfig.DebugLog.Value ?? false) Plugin.Instance?.Logger.LogDebug($"{GetHashCode()}: Candidates: {kv.Key}:{kv.Value.target.Name}");
 
                     var weight = kv.Value.weight * config.TargetWeightFactorFunction(baseTransform, targetPosition);
                     poiList.Add(new PoiListItem() { kv = kv, realWeight = weight });
@@ -303,10 +305,13 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
                 stareTime = 0;
                 var i = GetNextInterestPoint();
                 currentTarget = i;
-                if (i.HasValue)
-                    Plugin.Instance?.Logger.LogInfo($"{GetHashCode()}: Transfered target to {i.Value.Key}:{i.Value.Value.target.Name}");
-                else
-                    Plugin.Instance?.Logger.LogInfo($"{GetHashCode()}: Cleared target");
+                if (Plugin.Instance?.EyeConfig.DebugLog.Value ?? false)
+                {
+                    if (i.HasValue)
+                        Plugin.Instance?.Logger.LogInfo($"{GetHashCode()}: Transfered target to {i.Value.Key}:{i.Value.Value.target.Name}");
+                    else
+                        Plugin.Instance?.Logger.LogInfo($"{GetHashCode()}: Cleared target");
+                }
                 return i?.Value.target;
             }
             else if (currentTarget != null)
@@ -489,7 +494,6 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
 
         public static Vector3 ChangeEyeTarget(TBody __instance, Vector3 targetPosition)
         {
-            Console.WriteLine("detour");
             var target = SetPoi(__instance);
             if (target != null)
             {
@@ -501,6 +505,7 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
             }
         }
 
+        // This method patches the original `MoveHeadAndEye` method.
         [HarmonyTranspiler, HarmonyPatch(typeof(TBody), "MoveHeadAndEye")]
         public static IEnumerable<CodeInstruction> AddEyeControlling(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
         {
@@ -509,7 +514,9 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
             /*
                 if (!this.boMAN && this.trsEyeL != null && this.trsEyeR != null)
 	            {
-                    // <--- We want to insert code here
+                    // <--- We want to insert code here...
+                    // ...and change the value of this variable `a`
+                    //              --v--
 		            Vector3 vector4 = a - this.trsHead.position;
                     ...
              *
@@ -529,7 +536,7 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
                 434	05DA	call	bool [UnityEngine]UnityEngine.Object::op_Inequality(class [UnityEngine]UnityEngine.Object, class [UnityEngine]UnityEngine.Object)
                 435	05DF	brfalse	572 (07C1) ret
             ----------------------------------------> HERE!
-                436	05E4	ldloc.1
+                436	05E4	ldloc.1   // <- We need to change this variable
                 437	05E5	ldarg.0
                 438	05E6	ldfld	class [UnityEngine]UnityEngine.Transform TBody::trsHead
                 439	05EB	callvirt	instance valuetype [UnityEngine]UnityEngine.Vector3 [UnityEngine]UnityEngine.Transform::get_position()
@@ -539,29 +546,42 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
              * So we need to find the pattern from 436 through 441.
              */
             var targetField_trsHead = AccessTools.Field(typeof(TBody), "trsHead");
+            var targetField_trsNeck = AccessTools.Field(typeof(TBody), "trsNeck");
             var targetMethod_getPosition = AccessTools.Method(typeof(Transform), "get_position");
             var targetMethod_getRotation = AccessTools.Method(typeof(Transform), "get_rotation");
             var targetMethod_vecSubtract = AccessTools.Method(typeof(Vector3), "op_Subtraction", parameters: new Type[] { typeof(Vector3), typeof(Vector3) });
             var targetMethod_quaternionInverse = AccessTools.Method(typeof(Quaternion), "Inverse");
             var targetMethod_quaternionMultiply = AccessTools.Method(typeof(Quaternion), "op_Multiply", parameters: new Type[] { typeof(Quaternion), typeof(Vector3) });
+            //var targetMethod_setLocalRotation = AccessTools.Method(typeof(Transform), "set_localRotation");
+            //var targetMethod_quaternionSlerp = AccessTools.Method(typeof(Quaternion), "Slerp");
+            //var targetMethod_coss = AccessTools.Method(typeof(UTY), "COSS");
+            //var targetField_headToCam = AccessTools.Field(typeof(TBody), "HeadToCamPer");
 
             // Find insertion target
             int target = -1;
-            for (int i = 0; i < code.Count - 13; i++)
+            for (int i = 6; i < code.Count; i++)
             {
-                if (code[i].IsLdloc()
-                    && code[i + 1].IsLdarg(0)
-                    && code[i + 2].LoadsField(targetField_trsHead)
-                    && code[i + 3].Calls(targetMethod_getPosition)
-                    && code[i + 4].Calls(targetMethod_vecSubtract)
-                    && code[i + 5].IsStloc()
-                    && code[i + 6].IsLdarg(0)
-                    && code[i + 7].LoadsField(targetField_trsHead)
-                    && code[i + 8].Calls(targetMethod_getRotation)
-                    && code[i + 9].Calls(targetMethod_quaternionInverse)
-                    && code[i + 10].IsLdloc()
-                    && code[i + 11].Calls(targetMethod_quaternionMultiply)
-                    && code[i + 12].IsStloc())
+                if (
+                    //code[i].IsLdloc()
+                    //&& code[i + 1].IsLdarg(0)
+                    //&& code[i + 2].LoadsField(targetField_trsHead)
+                    //&& code[i + 3].Calls(targetMethod_getPosition)
+                    //&& code[i + 4].Calls(targetMethod_vecSubtract)
+                    //&& code[i + 5].IsStloc()
+                    //&& code[i + 6].IsLdarg(0)
+                    //&& code[i + 7].LoadsField(targetField_trsHead)
+                    //&& code[i + 8].Calls(targetMethod_getRotation)
+                    //&& code[i + 9].Calls(targetMethod_quaternionInverse)
+                    //&& code[i + 10].IsLdloc()
+                    //&& code[i + 11].Calls(targetMethod_quaternionMultiply)
+                    //&& code[i + 12].IsStloc()
+                    code[i - 6].IsLdloc()
+                    && code[i - 5].IsLdarg(0)
+                    && code[i - 4].LoadsField(targetField_trsNeck)
+                    && code[i - 3].Calls(targetMethod_getPosition)
+                    && code[i - 2].Calls(targetMethod_vecSubtract)
+                    && code[i - 1].IsStloc()
+                    )
                 {
                     target = i; break;
                 }
@@ -582,27 +602,19 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
             // patch code
             if (target > 0 && !alreadyPatched)
             {
-                var localVariableTarget = code[target];
+                var localVariableTarget = code[target - 6];
                 var insertedInstructions = new CodeInstruction[]
                 {
                     // TBody __instance
                     new CodeInstruction(OpCodes.Ldarg_0),
-                    // ref Vector3 targetPosition
-                    localVariableTarget,
+                    // Vector3 targetPosition
+                    localVariableTarget.Clone(),
                     // call ChangeEyeTarget(__instance, targetPosition)
                     new CodeInstruction(OpCodes.Call, detourFunction),
                     // restore target
                     StoreLoc(localVariableTarget)
                 };
                 code.InsertRange(target, insertedInstructions);
-
-                var result = new StringBuilder("After patch inspect:");
-                result.AppendLine();
-                foreach (var inst in code)
-                {
-                    result.AppendLine(inst.ToString());
-                }
-                Plugin.Instance?.Logger.LogInfo(result.ToString());
             }
 
             return code;
@@ -637,6 +649,133 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
             else
             {
                 throw new Exception("Code is not LdLoc");
+            }
+        }
+
+        /// <summary>
+        /// This callback is used to patch MaidVoicePitch.
+        /// </summary>
+        /// <param name="harmony"></param>
+        public static void PatchMaidVoicePitch(Harmony harmony)
+        {
+            var assembly = System.Reflection.Assembly.Load("COM3D2.MaidVoicePitch.Plugin");
+            if (assembly == null)
+            {
+                Plugin.Instance?.Logger.LogInfo("MaidVoicePitch not found. Exiting.");
+                return;
+            }
+
+            var ty = AccessTools.TypeByName("TBodyMoveHeadAndEye");
+            // MaidVoicePitch does not exist. Phew!
+            if (ty == null)
+            {
+                Plugin.Instance?.Logger.LogInfo("MaidVoicePitch not found. Exiting.");
+                return;
+            }
+            var targeMethod = AccessTools.Method(ty, "newTbodyMoveHeadAndEyeCallback2");
+            var otherTargeMethod = AccessTools.Method(ty, "originalTbodyMoveHeadAndEyeCallback2");
+            if (targeMethod == null || otherTargeMethod == null)
+            {
+                Plugin.Instance?.Logger.LogWarning("MaidVoicePitch type found but not method. Exiting.");
+                var methods = AccessTools.GetDeclaredMethods(ty);
+                Plugin.Instance?.Logger.LogInfo("Methods found:");
+                foreach (var m in methods)
+                {
+                    Plugin.Instance?.Logger.LogInfo(m.FullDescription());
+                }
+                return;
+            }
+
+            Plugin.Instance?.Logger.LogInfo("Patching the naughty MaidVoicePitch!");
+
+            harmony.Patch(targeMethod, transpiler: new HarmonyMethod(AccessTools.Method(typeof(PoiHook), nameof(MaidVoicePitchTranspiler))));
+            harmony.Patch(otherTargeMethod, transpiler: new HarmonyMethod(AccessTools.Method(typeof(PoiHook), nameof(MaidVoicePitchTranspiler))));
+        }
+
+        public static IEnumerable<CodeInstruction> MaidVoicePitchTranspiler(IEnumerable<CodeInstruction> input)
+        {
+            var code = input.ToList();
+            /*
+            Inside New callback:
+                46	0079	ldarg.0
+                47	007A	ldarg.1
+                48	007B	ldarg.2
+                49	007C	ldarg.3
+                50	007D	ldarg.s	thatHeadEulerAngleG (4)
+                51	007F	ldarg.s	thatEyeEulerAngle (5)
+                52	0081	ldloc.3                         <- We also need to edit this local variable
+                53	0082	call	instance void TBodyMoveHeadAndEye::newMoveHead(...)
+            --------> INSERT CODE HERE!
+
+            Inside Old callback:
+                43	0072	ldarg.0
+                44	0073	ldarg.1
+                45	0074	ldarg.2
+                46	0075	ldarg.3
+                47	0076	ldarg.s	thatEyeEulerAngle (4)
+                48	0078	ldloc.2                         <- We also need to edit this local variable
+                49	0079	call	instance void TBodyMoveHeadAndEye::originalMoveHead(...)
+            ---------> INSERT CODE HERE!
+             */
+
+            int target = -1;
+            var ty = AccessTools.TypeByName("TBodyMoveHeadAndEye");
+            var targetMethod_newMoveHead = AccessTools.Method(ty, "newMoveHead");
+            var targetMethod_originalMoveHead = AccessTools.Method(ty, "originalMoveHead");
+            for (int i = 2; i < code.Count; i++)
+            {
+                if (code[i - 2].IsLdloc() && (
+                        code[i - 1].Calls(targetMethod_newMoveHead) ||
+                        code[i - 1].Calls(targetMethod_originalMoveHead)
+                    )
+                )
+                {
+                    target = i;
+                    break;
+                }
+            }
+
+            var detourFunction = AccessTools.Method(typeof(PoiHook), nameof(MaidVoicePitch_ChangeEyeTarget));
+            bool alreadyPatched = false;
+            for (int i = 0; i < code.Count; i++)
+            {
+                if (code[i].Calls(detourFunction))
+                {
+                    alreadyPatched = true; break;
+                }
+            }
+
+            if (target > 0 && !alreadyPatched)
+            {
+                var localVariableTarget = code[target - 2];
+                code.InsertRange(target, new CodeInstruction[]
+                {
+                    // TBody __instance
+                    new CodeInstruction(OpCodes.Ldarg_1),
+                    // Vector3 targetPosition
+                    localVariableTarget.Clone(),
+                    // call ChangeEyeTarget(__instance, targetPosition)
+                    new CodeInstruction(OpCodes.Call, detourFunction),
+                    // restore target
+                    StoreLoc(localVariableTarget)
+                });
+            }
+
+            return code;
+        }
+
+        public static Vector3 MaidVoicePitch_ChangeEyeTarget(TBody __instance, Vector3 targetPosition)
+        {
+            var target = SetPoi(__instance);
+            if (target != null)
+            {
+                __instance.boEyeToCam = true;
+                __instance.boChkEye = true;
+                return target.Value;
+            }
+            else
+            {
+                return targetPosition;
             }
         }
 
@@ -821,7 +960,7 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
                 new PointOfInterestManager(
                     Plugin.Instance.PoiConfig,
                     __instance.trsHead,
-                    new PointOfInterestManager.ViewAngle { xNeg = -60, xPos = 60, zNeg = -50, zPos = 40 }));
+                    new PointOfInterestManager.ViewAngle { xNeg = -40, xPos = 40, zNeg = -30, zPos = 25 }));
             __instance.gameObject.AddComponent<DebugLineRenderer>();
         }
 

@@ -10,6 +10,7 @@ using System;
 namespace Karenia.GetTapped.Core
 {
 #nullable disable
+
     public class PluginConfig
     {
         public ConfigEntry<bool> PluginEnabled;
@@ -31,17 +32,18 @@ namespace Karenia.GetTapped.Core
             TranslationSensitivity = Config.Bind(new ConfigDefinition("default", "Translation sensitivity"), 0.1f);
         }
     }
+
 #nullable restore
 
     public class PluginCore : IGetTappedPlugin
     {
         public static string Version = "0.2.0";
 
-        CameraMovement? calculated = null;
-        int lastFrame = -1;
+        private CameraMovement? calculated = null;
+        private int lastFrame = -1;
 
-        readonly HashSet<int> untrackedPointers = new HashSet<int>();
-        readonly List<Touch> framePointers = new List<Touch>();
+        private readonly HashSet<int> untrackedPointers = new HashSet<int>();
+        private readonly List<Touch> framePointers = new List<Touch>();
 
         public CameraMovement GetCameraMovement(bool singleTapPan = false, bool forceRecalcualte = false, Func<Touch, bool>? shouldBeUntracked = null)
         {
@@ -177,7 +179,7 @@ namespace Karenia.GetTapped.Core
         CameraMovement GetCameraMovement(bool singleTapTranslate = false, bool forceRecalculate = false, Func<Touch, bool>? shouldBeUntracked = null);
     }
 
-    public struct CameraMovement
+    public struct CameraMovement : IEquatable<CameraMovement>
     {
         public Vector3 ScreenSpaceRotation;
         public Vector2 ScreenSpaceTranslation;
@@ -213,6 +215,37 @@ namespace Karenia.GetTapped.Core
         public bool HasMoved()
         {
             return this.ScreenSpaceRotation != Vector3.zero || this.ScreenSpaceTranslation != Vector2.zero || this.Zoom != 1;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is CameraMovement movement && Equals(movement);
+        }
+
+        public bool Equals(CameraMovement other)
+        {
+            return EqualityComparer<Vector3>.Default.Equals(ScreenSpaceRotation, other.ScreenSpaceRotation) &&
+                   EqualityComparer<Vector2>.Default.Equals(ScreenSpaceTranslation, other.ScreenSpaceTranslation) &&
+                   Zoom == other.Zoom;
+        }
+
+        public override int GetHashCode()
+        {
+            int hashCode = -1110116347;
+            hashCode = hashCode * -1521134295 + ScreenSpaceRotation.GetHashCode();
+            hashCode = hashCode * -1521134295 + ScreenSpaceTranslation.GetHashCode();
+            hashCode = hashCode * -1521134295 + Zoom.GetHashCode();
+            return hashCode;
+        }
+
+        public static bool operator ==(CameraMovement left, CameraMovement right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(CameraMovement left, CameraMovement right)
+        {
+            return !(left == right);
         }
     }
 

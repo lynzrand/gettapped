@@ -3,11 +3,10 @@
 
 	<PropertyGroup>
 		<TargetFramework>net35</TargetFramework>
-		<Version>0.1.1</Version>
+		<Version>0.2.0</Version>
 		<LangVersion>9</LangVersion>
 		<Nullable>enable</Nullable>
 	</PropertyGroup>
-
 
 	<ItemGroup>
 		<Reference Include="BepInEx">
@@ -31,7 +30,6 @@
 		<Reference Remove="Plugin.cs" />
 		<Reference Remove="PointOfInterest.cs" />
 	</ItemGroup>
-
 
 	<ItemGroup>
 		<ProjectReference Include="..\FixEyeMov.Core\FixEyeMov.Core.csproj" />

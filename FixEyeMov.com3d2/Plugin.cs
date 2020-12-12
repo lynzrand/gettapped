@@ -12,6 +12,8 @@ using static Karenia.FixEyeMov.Com3d2.CharaExt;
 namespace Karenia.FixEyeMov.Com3d2
 {
     [BepInPlugin(id, projectName, version)]
+    [BepInProcess("COM3D2x64.exe")]
+    [BepInDependency("org.bepinex.plugins.unityinjectorloader", BepInDependency.DependencyFlags.SoftDependency)]
     public class Plugin : BaseUnityPlugin
     {
         public const string id = "cc.karenia.fixeyemov.com3d2";
@@ -25,11 +27,15 @@ namespace Karenia.FixEyeMov.Com3d2
             PoiConfig = new Poi.PoiConfig(base.Config);
 
             Logger = BepInEx.Logging.Logger.CreateLogSource("FixEyeMov");
-            var harmony = new Harmony(id);
+            harmony = new Harmony(id);
 
             harmony.PatchAll(typeof(EyeMovementHook));
             harmony.PatchAll(typeof(Poi.PoiHook));
+
+            Poi.PoiHook.PatchMaidVoicePitch(harmony);
         }
+
+        private Harmony harmony;
 
         public static Plugin? Instance { get; private set; }
         public EyeMovementConfig EyeConfig { get; private set; }
