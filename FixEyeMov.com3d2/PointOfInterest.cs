@@ -3,14 +3,11 @@ using BepInEx.Logging;
 using HarmonyLib;
 using System;
 using System.Collections.Generic;
-using System.Collections;
 using System.Linq;
 using System.Reflection;
-using System.Text;
+using System.Reflection.Emit;
 using UnityEngine;
 using static Karenia.FixEyeMov.Core.MathfExt;
-using static Karenia.FixEyeMov.Com3d2.CharaExt;
-using System.Reflection.Emit;
 
 namespace Karenia.FixEyeMov.Com3d2.Poi
 {
@@ -40,7 +37,7 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
 
         public Vector3 WorldPosition(Transform baseTransform);
 
-        public Transform? Transform(Transform baseTransform);
+        public bool ShouldBeSelected(Transform baseTransform, Vector3 directionVector);
     }
 
     public class TransformTarget : IPoiTarget
@@ -57,7 +54,18 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
 
         public bool CanGuideTargetSearching { get; set; } = true;
 
-        public Transform? Transform(Transform _) => transform;
+        public bool ShouldBeSelected(Transform baseTransform, Vector3 directionVector)
+        {
+            var ray = new Ray(baseTransform.position, directionVector);
+            Physics.Raycast(ray, out var hitInfo, float.PositiveInfinity);
+            var hit = hitInfo.transform;
+
+            Plugin.Instance?.Logger.LogDebug($"{Name}: Raycast target is {hit}");
+
+            // Avoid occlusion
+            if (hit == null || hit.IsChildOf(transform) || transform.IsChildOf(hit)) return true;
+            else return false;
+        }
 
         public Vector3 WorldPosition(Transform _) => transform.position;
     }
@@ -68,7 +76,7 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
 
         public bool CanGuideTargetSearching => false;
 
-        public Transform? Transform(Transform _) => Camera.main.transform;
+        public bool ShouldBeSelected(Transform baseTransform, Vector3 directionVector) => true;
 
         public Vector3 WorldPosition(Transform _) => Camera.main.transform.position;
     }
@@ -86,10 +94,7 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
 
         public bool CanGuideTargetSearching => true;
 
-        public Transform? Transform(Transform baseTransform)
-        {
-            return null;
-        }
+        public bool ShouldBeSelected(Transform baseTransform, Vector3 directionVector) => true;
 
         public Vector3 WorldPosition(Transform baseTransform)
         {
@@ -97,7 +102,7 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
         }
     }
 
-    public class PointOfInterest
+    public class PointOfInterest : ICloneable
     {
         public PointOfInterest(IPoiTarget target, float weight, bool alwaysPresent = false)
         {
@@ -125,13 +130,17 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
         public static PointOfInterest Camera(float weight) => new PointOfInterest(new CameraTarget(), weight);
 
         public static PointOfInterest Transform(Transform transform, float weight) => new PointOfInterest(new TransformTarget(transform), weight);
+
+        public PointOfInterest Clone() => new PointOfInterest(target, weight, alwaysPresent);
+
+        object ICloneable.Clone() => Clone();
     }
 
     public class PoiConfig
     {
         private const string section = "PointOfInterest";
 
-        public PoiConfig(ConfigFile config, Func<Transform, Vector3, float>? targetWeightFactorFunction = null, ManualLogSource? logger = null)
+        public PoiConfig(ConfigFile config, Func<Transform, Vector3, Vector3?, float>? targetWeightFactorFunction = null, ManualLogSource? logger = null)
         {
             TransferCheckInterval = config.Bind(section, nameof(TransferCheckInterval), 0.3f, "Average interval (seconds) between transfers");
             TransferCheckStdDev = config.Bind(section, nameof(TransferCheckStdDev), 0.07f, "Standard deviation between transfer checks");
@@ -152,7 +161,11 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
         public ConfigEntry<bool> Enabled { get; private set; }
         public ConfigEntry<bool> DebugLog { get; private set; }
 
-        public Func<Transform, Vector3, float> TargetWeightFactorFunction { get; set; } = (_, _) => 1.0f;
+        /// <summary>
+        /// Target weight function in the form of (baseTransform, targetPosition, originalTargetPosition) -> factor
+        /// </summary>
+        public Func<Transform, Vector3, Vector3?, float> TargetWeightFactorFunction { get; set; } = (_, _, _) => 1.0f;
+
         public ManualLogSource? Logger { get; }
     }
 
@@ -213,26 +226,22 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
         {
             float totalSum = 0;
             var poiList = new List<PoiListItem>();
-            var nearSquared = config.NearClip.Value * config.NearClip.Value;
-            var farSquared = config.FarClip.Value * config.FarClip.Value;
 
             Vector3 viewDirection = DirectionVector();
 
             foreach (var kv in pointOfInterest)
             {
                 Vector3 targetPosition = kv.Value.target.WorldPosition(baseTransform);
-                Vector3 targetDirection = targetPosition - baseTransform.position;
 
-                var targetDistSquared = targetDirection.sqrMagnitude;
-                if (targetDistSquared >= farSquared || targetDistSquared <= nearSquared) continue;
-
-                var viewAngle = Quaternion.FromToRotation(viewDirection, targetDirection);
-
-                if (viewport.Contains(viewAngle) || kv.Value.alwaysPresent)
+                if (ViewportContains(viewDirection, targetPosition) || kv.Value.alwaysPresent)
                 {
-                    if (Plugin.Instance?.EyeConfig.DebugLog.Value ?? false) Plugin.Instance?.Logger.LogDebug($"{GetHashCode()}: Candidates: {kv.Key}:{kv.Value.target.Name}");
+                    if (Plugin.Instance?.EyeConfig.DebugLog.Value ?? false)
+                    {
+                        var shouldBeSelected = kv.Value.target.ShouldBeSelected(baseTransform, targetPosition - baseTransform.position);
+                        Plugin.Instance?.Logger.LogDebug($"{GetHashCode()}: Candidates: {kv.Key}:{kv.Value.target.Name}; ShouldBeSelected = {shouldBeSelected}");
+                    }
 
-                    var weight = kv.Value.weight * config.TargetWeightFactorFunction(baseTransform, targetPosition);
+                    var weight = kv.Value.weight * config.TargetWeightFactorFunction(baseTransform, targetPosition, currentTarget?.Value.target.WorldPosition(baseTransform));
                     poiList.Add(new PoiListItem() { kv = kv, realWeight = weight });
                     totalSum += weight;
                 }
@@ -270,6 +279,20 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
             return viewDirection;
         }
 
+        public bool ViewportContains(Vector3 viewDirection, Vector3 targetPosition)
+        {
+            Vector3 targetDirection = targetPosition - baseTransform.position;
+            var viewAngle = Quaternion.FromToRotation(viewDirection, targetDirection);
+
+            var nearSquared = config.NearClip.Value * config.NearClip.Value;
+            var farSquared = config.FarClip.Value * config.FarClip.Value;
+
+            var targetDistSquared = targetDirection.sqrMagnitude;
+            if (targetDistSquared >= farSquared || targetDistSquared <= nearSquared) return false;
+
+            return viewport.Contains(viewAngle);
+        }
+
         private bool TriggerTransfer()
         {
             if (currentTarget == null) return true;
@@ -299,6 +322,10 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
             {
                 ResetTransferInterval();
                 shouldTransfer = true;
+            }
+            if (currentTarget.HasValue)
+            {
+                shouldTransfer |= !ViewportContains(DirectionVector(), currentTarget.Value.Value.target.WorldPosition(baseTransform));
             }
             if (shouldTransfer && TriggerTransfer())
             {
@@ -374,9 +401,13 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
 
         public static Transform? RightEye(TBody body) => body.trsEyeR;
 
-        public static Transform? LeftHand(TBody body) => body.m_trHandHitL;
+        private static readonly FieldInfo tBodyHandL = AccessTools.Field(typeof(TBody), "HandL");
 
-        public static Transform? RightHand(TBody body) => body.m_trHandHitR;
+        public static Transform LeftHand(TBody body) => (Transform)tBodyHandL.GetValue(body);
+
+        private static readonly FieldInfo tBodyHandR = AccessTools.Field(typeof(TBody), "HandR");
+
+        public static Transform? RightHand(TBody body) => (Transform)tBodyHandR.GetValue(body);
 
         public static Transform? Camera() => GameMain.Instance.VRMode ?
             UnityEngine.Camera.main.transform : GameMain.Instance.OvrMgr.EyeAnchor;
@@ -690,6 +721,7 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
 
             harmony.Patch(targeMethod, transpiler: new HarmonyMethod(AccessTools.Method(typeof(PoiHook), nameof(MaidVoicePitchTranspiler))));
             harmony.Patch(otherTargeMethod, transpiler: new HarmonyMethod(AccessTools.Method(typeof(PoiHook), nameof(MaidVoicePitchTranspiler))));
+            harmony.Patch(targeMethod, transpiler: new HarmonyMethod(AccessTools.Method(typeof(PoiHook), nameof(MaidVoicePitch_PatchEyeTrackLimit))));
         }
 
         public static IEnumerable<CodeInstruction> MaidVoicePitchTranspiler(IEnumerable<CodeInstruction> input)
@@ -764,6 +796,16 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
             return code;
         }
 
+        public static IEnumerable<CodeInstruction> MaidVoicePitch_PatchEyeTrackLimit(IEnumerable<CodeInstruction> code)
+        {
+            return new CodeMatcher(code)
+               .MatchForward(true, new CodeMatch(OpCodes.Ldstr, "EYE_TRACK.inside"))
+               .SetInstruction(new CodeInstruction(OpCodes.Ldc_R4, 40f))
+               .MatchForward(true, new CodeMatch(OpCodes.Ldstr, "EYE_TRACK.outside"))
+               .SetInstruction(new CodeInstruction(OpCodes.Ldc_R4, 40f))
+               .InstructionEnumeration();
+        }
+
         public static Vector3 MaidVoicePitch_ChangeEyeTarget(TBody __instance, Vector3 targetPosition)
         {
             var target = SetPoi(__instance);
@@ -826,8 +868,13 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
         /// </summary>
         /// <returns>A collection of transforms to be added</returns>
         public static ICollection<PointOfInterest> RecalculateSceneTargets(
-            float faceWeight = 2f, float handWeight = 1f, float genitalWeight = 2f, float breastWeight = 1f,
-            bool includeGenital = false, bool includeBreast = false)
+            float faceWeight = 2f,
+            float handWeight = 0.3f,
+            float genitalWeight = 2f,
+            float breastWeight = 1f,
+            float breastInactiveWeight = 0.4f,
+            bool includeGenital = false,
+            bool includeBreast = false)
         {
             var targetTransforms = new HashSet<PointOfInterest>();
             var charMgr = GameMain.Instance?.CharacterMgr;
@@ -855,14 +902,15 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
                     var rightHand = InterestedTransform.RightHand(body0);
                     if (rightHand != null) targetTransforms.Add(PointOfInterest.Transform(rightHand, handWeight));
 
-                    if (includeBreast && breastVisible)
+                    var leftBreast = InterestedTransform.LeftBreast(body0);
+                    var rightBreast = InterestedTransform.RightBreast(body0);
+                    if (!includeBreast || !breastVisible)
                     {
-                        var leftBreast = InterestedTransform.LeftBreast(body0);
-                        if (leftBreast != null) targetTransforms.Add(PointOfInterest.Transform(leftBreast, breastWeight));
-
-                        var rightBreast = InterestedTransform.RightBreast(body0);
-                        if (rightBreast != null) targetTransforms.Add(PointOfInterest.Transform(rightBreast, breastWeight));
+                        breastWeight = breastInactiveWeight;
                     }
+                    if (leftBreast != null) targetTransforms.Add(PointOfInterest.Transform(leftBreast, breastWeight));
+                    if (rightBreast != null) targetTransforms.Add(PointOfInterest.Transform(rightBreast, breastWeight));
+
                     if (includeGenital && genitalVisible)
                     {
                         var genital = InterestedTransform.Genitalia(body0);
@@ -909,13 +957,37 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
 
         public static void AddSceneTargets(PointOfInterestManager poi, ICollection<PointOfInterest> targets)
         {
-            foreach (var target in targets)
+            foreach (var usedTarget in targets)
             {
-                var key = $"scene:{target.target?.Name ?? "NULL?"}";
+                var target = usedTarget;
+                var key = $"scene:{target.target.Name ?? "NULL?"}";
+                if (target.target is TransformTarget transformTarget)
+                {
+                    target = target.Clone();
+                    if (transformTarget.transform.IsChildOf(poi.baseTransform))
+                    { target.weight /= 2; }
+                    else
+                    {
+                        target.weight *= 1.2f;
+                    }
+                }
                 poi.AddPoi(key, target);
             }
         }
 
+        /// <summary>
+        /// This method is responsible for regenerating targets every time the scene restarts.
+        /// <para>
+        ///     The algorithm used here is of <c>O(n^2)</c> complexity, but since the game only
+        ///     supports 40 characters at most, and 99% of the scenes are made of less than 5
+        ///     characters, this should be fine.
+        /// </para>
+        /// <para>
+        ///     One way this function could cause lag is when all points of interest from the previous
+        ///     iteration is discarded. Maybe a lock-free object pool is needed if that happens. For
+        ///     now, we'll just discard those targets.
+        /// </para>
+        /// </summary>
         [HarmonyPostfix]
         [HarmonyPatch(typeof(CharacterMgr), "Deactivate")]
         [HarmonyPatch(typeof(CharacterMgr), "Activate")]

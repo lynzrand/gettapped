@@ -24,7 +24,25 @@ namespace Karenia.FixEyeMov.Com3d2
         {
             Instance = this;
             EyeConfig = new EyeMovementConfig(base.Config);
-            PoiConfig = new Poi.PoiConfig(base.Config);
+            PoiConfig = new Poi.PoiConfig(base.Config)
+            {
+                TargetWeightFactorFunction = (baseTransform, target, originalTarget) =>
+                {
+                    var dir = target - baseTransform.position;
+                    var dist = dir.magnitude;
+                    var distanceFactor = Mathf.Clamp(3 / dist, 0, 1);
+                    var directionFactor = 1f;
+                    if (originalTarget != null)
+                    {
+                        var originalDir = originalTarget - baseTransform.position;
+                        directionFactor = Mathf.Cos(Vector3.Angle(dir, originalDir.Value) * Mathf.Deg2Rad);
+                        var forward = baseTransform.up;
+                        directionFactor *= Mathf.Cos(Vector3.Angle(dir, forward) * Mathf.Deg2Rad);
+                        directionFactor *= 1.5f;
+                    }
+                    return distanceFactor * directionFactor;
+                }
+            };
 
             Logger = BepInEx.Logging.Logger.CreateLogSource("FixEyeMov");
             harmony = new Harmony(id);
