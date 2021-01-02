@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Text;
 using UnityEngine;
 using static Karenia.FixEyeMov.Core.MathfExt;
 
@@ -470,6 +471,18 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
     public static class PoiHook
     {
         private static Dictionary<TBody, PointOfInterestManager> poiRepo = new Dictionary<TBody, PointOfInterestManager>();
+        private static bool enableByScene = true;
+
+        public static void Init()
+        {
+            UnityEngine.SceneManagement.SceneManager.activeSceneChanged += (oldScene, newScene) =>
+            {
+                if (newScene.name.Contains("Dance"))
+                    enableByScene = false;
+                else
+                    enableByScene = true;
+            };
+        }
 
         //[HarmonyPrefix, HarmonyPatch(typeof(TBody), "MoveHeadAndEye")]
         public static Vector3? SetPoi(TBody __instance)
@@ -690,9 +703,10 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
         public static void PatchMaidVoicePitch(Harmony harmony)
         {
             var assembly = System.Reflection.Assembly.Load("COM3D2.MaidVoicePitch.Plugin");
+            ManualLogSource? logger = Plugin.Instance?.Logger;
             if (assembly == null)
             {
-                Plugin.Instance?.Logger.LogInfo("MaidVoicePitch not found. Exiting.");
+                logger?.LogInfo("MaidVoicePitch not found. Exiting.");
                 return;
             }
 
@@ -700,27 +714,29 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
             // MaidVoicePitch does not exist. Phew!
             if (ty == null)
             {
-                Plugin.Instance?.Logger.LogInfo("MaidVoicePitch not found. Exiting.");
+                logger?.LogInfo("MaidVoicePitch not found. Exiting.");
                 return;
             }
             var targeMethod = AccessTools.Method(ty, "newTbodyMoveHeadAndEyeCallback2");
             var otherTargeMethod = AccessTools.Method(ty, "originalTbodyMoveHeadAndEyeCallback2");
             if (targeMethod == null || otherTargeMethod == null)
             {
-                Plugin.Instance?.Logger.LogWarning("MaidVoicePitch type found but not method. Exiting.");
+                logger?.LogWarning("MaidVoicePitch type found but not method. Exiting.");
                 var methods = AccessTools.GetDeclaredMethods(ty);
-                Plugin.Instance?.Logger.LogInfo("Methods found:");
+                logger?.LogInfo("Methods found:");
                 foreach (var m in methods)
                 {
-                    Plugin.Instance?.Logger.LogInfo(m.FullDescription());
+                    logger?.LogInfo(m.FullDescription());
                 }
                 return;
             }
 
-            Plugin.Instance?.Logger.LogInfo("Patching the naughty MaidVoicePitch!");
+            logger?.LogInfo("Patching the naughty MaidVoicePitch!");
 
             harmony.Patch(targeMethod, transpiler: new HarmonyMethod(AccessTools.Method(typeof(PoiHook), nameof(MaidVoicePitchTranspiler))));
+
             harmony.Patch(otherTargeMethod, transpiler: new HarmonyMethod(AccessTools.Method(typeof(PoiHook), nameof(MaidVoicePitchTranspiler))));
+
             harmony.Patch(targeMethod, transpiler: new HarmonyMethod(AccessTools.Method(typeof(PoiHook), nameof(MaidVoicePitch_PatchEyeTrackLimit))));
         }
 
@@ -799,11 +815,13 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
         public static IEnumerable<CodeInstruction> MaidVoicePitch_PatchEyeTrackLimit(IEnumerable<CodeInstruction> code)
         {
             return new CodeMatcher(code)
-               .MatchForward(true, new CodeMatch(OpCodes.Ldstr, "EYE_TRACK.inside"))
-               .SetInstruction(new CodeInstruction(OpCodes.Ldc_R4, 40f))
-               .MatchForward(true, new CodeMatch(OpCodes.Ldstr, "EYE_TRACK.outside"))
-               .SetInstruction(new CodeInstruction(OpCodes.Ldc_R4, 40f))
-               .InstructionEnumeration();
+                .MatchForward(true, new CodeMatch(OpCodes.Ldstr, "EYE_TRACK.inside"))
+                .Advance(1)
+                .SetAndAdvance(OpCodes.Ldc_R4, 40f)
+                .MatchForward(true, new CodeMatch(OpCodes.Ldstr, "EYE_TRACK.outside"))
+                .Advance(1)
+                .SetAndAdvance(OpCodes.Ldc_R4, 40f)
+                .InstructionEnumeration();
         }
 
         public static Vector3 MaidVoicePitch_ChangeEyeTarget(TBody __instance, Vector3 targetPosition)
@@ -957,12 +975,15 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
 
         public static void AddSceneTargets(PointOfInterestManager poi, ICollection<PointOfInterest> targets)
         {
+            if (poi.baseTransform == null) return;
             foreach (var usedTarget in targets)
             {
                 var target = usedTarget;
                 var key = $"scene:{target.target.Name ?? "NULL?"}";
                 if (target.target is TransformTarget transformTarget)
                 {
+                    if (transformTarget?.transform == null) continue;
+
                     target = target.Clone();
                     if (transformTarget.transform.IsChildOf(poi.baseTransform))
                     { target.weight /= 2; }
@@ -994,10 +1015,10 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
         [HarmonyPatch(typeof(CharacterMgr), "SetActive")]
         [HarmonyPatch(typeof(CharacterMgr), "CharaVisible")]
         [HarmonyPatch(typeof(CharacterMgr), "PresetSet")]
-        [HarmonyPatch(typeof(CharacterMgr), "AddProp")]
-        [HarmonyPatch(typeof(CharacterMgr), "SetProp")]
-        [HarmonyPatch(typeof(CharacterMgr), "ResetProp")]
-        [HarmonyPatch(typeof(CharacterMgr), "SetChinkoVisible")]
+        //[HarmonyPatch(typeof(CharacterMgr), "AddProp")]
+        //[HarmonyPatch(typeof(CharacterMgr), "SetProp")]
+        //[HarmonyPatch(typeof(CharacterMgr), "ResetProp")]
+        //[HarmonyPatch(typeof(CharacterMgr), "SetChinkoVisible")]
         [HarmonyPatch(typeof(BaseKagManager), "TagItemMaskMode")]
         [HarmonyPatch(typeof(BaseKagManager), "TagAddAllOffset")]
         [HarmonyPatch(typeof(BaseKagManager), "TagAddPrefabChara")]
