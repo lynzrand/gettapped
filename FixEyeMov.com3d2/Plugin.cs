@@ -47,10 +47,38 @@ namespace Karenia.FixEyeMov.Com3d2
             Logger = BepInEx.Logging.Logger.CreateLogSource("FixEyeMov");
             harmony = new Harmony(id);
 
-            harmony.PatchAll(typeof(EyeMovementHook));
-            harmony.PatchAll(typeof(Poi.PoiHook));
+            try
+            {
+                Logger.LogDebug("Patching Eye Movements");
+                harmony.PatchAll(typeof(EyeMovementHook));
+            }
+            catch (Exception e)
+            {
+                Logger.LogError("Error when patching EyeMovement");
+                Logger.LogError(e);
+            }
 
-            Poi.PoiHook.PatchMaidVoicePitch(harmony);
+            try
+            {
+                Logger.LogDebug("Patching POI stuff");
+                harmony.PatchAll(typeof(Poi.PoiHook));
+            }
+            catch (Exception e)
+            {
+                Logger.LogError("Error when patching POI");
+                Logger.LogError(e);
+            }
+
+            try
+            {
+                Logger.LogDebug("Patching MaidVoicePitch");
+                Poi.PoiHook.PatchMaidVoicePitch(harmony);
+            }
+            catch (Exception e)
+            {
+                Logger.LogError("Error when patching MaidVoicePitch");
+                Logger.LogError(e);
+            }
         }
 
         private Harmony harmony;

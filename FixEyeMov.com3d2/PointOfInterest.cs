@@ -1010,7 +1010,7 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
         /// </para>
         /// </summary>
         [HarmonyPostfix]
-        [HarmonyPatch(typeof(CharacterMgr), "Deactivate")]
+        [HarmonyPatch(typeof(CharacterMgr), "Deactivate", typeof(int), typeof(bool))]
         [HarmonyPatch(typeof(CharacterMgr), "Activate")]
         [HarmonyPatch(typeof(CharacterMgr), "SetActive")]
         [HarmonyPatch(typeof(CharacterMgr), "CharaVisible")]
@@ -1027,7 +1027,8 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
         [HarmonyPatch(typeof(BaseKagManager), "TagConCharaActivateLeader")]
         [HarmonyPatch(typeof(BaseKagManager), "Initialize")]
         [HarmonyPatch(typeof(TBody), "UnInit")]
-        [HarmonyPatch(typeof(TBody), "SetMask")]
+        [HarmonyPatch(typeof(TBody), "SetMask", typeof(TBody.SlotID), typeof(bool))]
+        [HarmonyPatch(typeof(TBody), "SetMask", typeof(MPN), typeof(bool))]
         public static void RegenerateTargetsInKagScene()
         {
             foreach (var kv in poiRepo)
