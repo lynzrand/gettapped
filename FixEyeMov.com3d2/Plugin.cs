@@ -47,6 +47,8 @@ namespace Karenia.FixEyeMov.Com3d2
             Logger = BepInEx.Logging.Logger.CreateLogSource("FixEyeMov");
             harmony = new Harmony(id);
 
+            var gameVersion = AccessTools.StaticFieldRefAccess<int>(typeof(Misc), "GAME_VERSION");
+
             try
             {
                 Logger.LogDebug("Patching Eye Movements");

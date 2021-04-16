@@ -1014,11 +1014,11 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
         [HarmonyPatch(typeof(CharacterMgr), "Activate")]
         [HarmonyPatch(typeof(CharacterMgr), "SetActive")]
         [HarmonyPatch(typeof(CharacterMgr), "CharaVisible")]
-        [HarmonyPatch(typeof(CharacterMgr), "PresetSet")]
         //[HarmonyPatch(typeof(CharacterMgr), "AddProp")]
         //[HarmonyPatch(typeof(CharacterMgr), "SetProp")]
         //[HarmonyPatch(typeof(CharacterMgr), "ResetProp")]
         //[HarmonyPatch(typeof(CharacterMgr), "SetChinkoVisible")]
+        [HarmonyPatch(typeof(CharacterMgr), "PresetSet", typeof(Maid), typeof(CharacterMgr.Preset), typeof(bool))]
         [HarmonyPatch(typeof(BaseKagManager), "TagItemMaskMode")]
         [HarmonyPatch(typeof(BaseKagManager), "TagAddAllOffset")]
         [HarmonyPatch(typeof(BaseKagManager), "TagAddPrefabChara")]
@@ -1042,7 +1042,7 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
             }
         }
 
-        [HarmonyPostfix, HarmonyPatch(typeof(TBody), "LoadBody_R")]
+        [HarmonyPostfix, HarmonyPatch(typeof(TBody), "LoadBody_R", typeof(string), typeof(Maid), typeof(int), typeof(bool))]
         public static void InitPoiInfo(TBody __instance)
         {
             if (__instance.boMAN || __instance.trsHead == null) return;
