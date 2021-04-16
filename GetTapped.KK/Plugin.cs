@@ -21,7 +21,7 @@ namespace Karenia.GetTapped.KK
     {
         public const string id = "cc.karenia.gettapped.kk";
         public const string projectName = "GetTapped.KK";
-        public const string version = "0.2.1";
+        public const string version = "0.3.0";
 
         public Plugin()
         {
@@ -31,9 +31,10 @@ namespace Karenia.GetTapped.KK
             Core = new PluginCore();
             Instance = this;
             harmony = new Harmony(id);
-            harmony.PatchAll(typeof(Hook));
+            harmony.PatchAll(typeof(CameraHook));
             // FIXME: It's not working now
             harmony.PatchAll(typeof(HTouchControlHook));
+            CameraHook.TryPatchRealPov(harmony);
         }
 
         public void Update()
@@ -53,9 +54,9 @@ namespace Karenia.GetTapped.KK
         public IGetTappedPlugin Core { get; private set; }
     }
 
-    public static class Hook
+    public static class CameraHook
     {
-        static Hook()
+        static CameraHook()
         {
         }
 
@@ -69,7 +70,7 @@ namespace Karenia.GetTapped.KK
         [HarmonyPatch(typeof(CameraControl_Ver2), "Start")]
         public static void HookStart()
         {
-            Plugin.Instance.Logger.LogInfo("Should be hooked now");
+            //Plugin.Instance.Logger.LogInfo("Should be hooked now");
         }
 
         private static int lastFrame = -1;
@@ -96,7 +97,8 @@ namespace Karenia.GetTapped.KK
             Vector3 dir = (Vector3)CamDatDir.GetValue(camdat);
             Vector3 pos = (Vector3)CamDatPos.GetValue(camdat);
             Vector3 rot = (Vector3)CamDatRot.GetValue(camdat);
-            dir.z *= Mathf.Clamp(dir.z + (movement.Zoom * pluginConfig.ZoomSensitivity.Value - 1), 0, float.PositiveInfinity);
+            dir.z -= (movement.Zoom - 1) * pluginConfig.ZoomSensitivity.Value;
+            dir.z = Mathf.Min(dir.z, 0);
             pos += __instance.transform.TransformDirection(movement.ScreenSpaceTranslation * pluginConfig.TranslationSensitivity.Value * 0.01f);
             rot += new Vector3(movement.ScreenSpaceRotation.y, -movement.ScreenSpaceRotation.x, 0) * 0.1f * pluginConfig.RotationSensitivity.Value;
             CamDatDir.SetValue(camdat, dir);
@@ -119,10 +121,51 @@ namespace Karenia.GetTapped.KK
 
             var camdat = __instance.GetCameraData();
             PluginConfig pluginConfig = instance.PluginConfig;
-            camdat.Dir.z = Mathf.Clamp(camdat.Dir.z + (movement.Zoom * pluginConfig.ZoomSensitivity.Value - 1), 0, float.PositiveInfinity);
+            camdat.Dir.z -= (movement.Zoom - 1) * pluginConfig.ZoomSensitivity.Value;
+            camdat.Dir.z = Mathf.Min(camdat.Dir.z, 0);
             camdat.Pos += __instance.transform.TransformDirection(movement.ScreenSpaceTranslation * pluginConfig.TranslationSensitivity.Value * 0.01f);
             camdat.Rot += new Vector3(movement.ScreenSpaceRotation.y, -movement.ScreenSpaceRotation.x, 0) * 0.1f * pluginConfig.RotationSensitivity.Value;
             __instance.SetCameraData(camdat);
+        }
+
+        public static void TryPatchRealPov(Harmony harmony)
+        {
+            Assembly realPov = null;
+            MethodInfo realPovUpdate;
+            try
+            {
+                realPov = Assembly.Load("RealPOV.Koikatu");
+                realPovLookRotationField = AccessTools.Field(AccessTools.TypeByName("RealPOV.Core.RealPOVCore"), "LookRotation");
+                realPovUpdate =
+                    AccessTools.Method("RealPOV.Core.RealPOVCore:LateUpdate")
+                    ?? AccessTools.Method("RealPOV.Core.RealPOVCore:Update");
+            }
+            catch
+            {
+                Plugin.Instance.Logger.LogInfo("RealPOV not loaded.");
+                return;
+            }
+            if (realPov == null || realPovUpdate == null || realPovLookRotationField == null)
+            {
+                Plugin.Instance.Logger.LogWarning("It's strange. Cannot load `RealPOV.Core.RealPOVCore` although `RealPOV` is loaded.");
+                return;
+            }
+
+            harmony.Patch(
+                realPovUpdate,
+                postfix: new HarmonyMethod(AccessTools.Method(typeof(CameraHook), "RealPOVPostfix")));
+        }
+
+        private static FieldInfo realPovLookRotationField;
+
+        public static void RealPOVPostfix()
+        {
+            var movement = Plugin.Instance.Core.GetCameraMovement(shouldBeUntracked: IsPointerOverUI);
+            var rotation = (Vector3)realPovLookRotationField.GetValue(null);
+            rotation += new Vector3(movement.ScreenSpaceRotation.y, -movement.ScreenSpaceRotation.x, 0)
+                * 0.1f
+                * Plugin.Instance.PluginConfig.RotationSensitivity.Value;
+            realPovLookRotationField.SetValue(null, rotation);
         }
     }
 
@@ -131,49 +174,110 @@ namespace Karenia.GetTapped.KK
     {
         private static int? speedControlLastClick = null;
 
+        /*
+         * When not in auto mode:
+         *   Tap the pad to increase speed (no difference from before).
+         *
+         * When in auto mode:
+         *   Drag in the pad to change speed.
+         *
+         * In either modes:
+         *   Double tap the pad to switch to auto mode.
+         *   Hold down one finger and tap the other on the pad to change motion.
+         *
+         */
+
         [HarmonyPostfix]
-        //[HarmonyPatch(typeof(HSonyu), "LoopProc")]
-        //[HarmonyPatch(typeof(HHoushi), "LoopProc")]
-        //[HarmonyPatch(typeof(H3PSonyu), "LoopProc")]
-        //[HarmonyPatch(typeof(H3PHoushi), "LoopProc")]
-        //[HarmonyPatch(typeof(H3PDarkSonyu), "LoopProc")]
-        //[HarmonyPatch(typeof(H3PDarkHoushi), "LoopProc")]
-        [HarmonyPatch(typeof(HSprite), "OnSpeedUpClick")]
-        public static void HSpeedControl(HSprite __instance, HFlag ___flags)
+        [HarmonyPatch(typeof(HSprite), "Start")]
+        public static void AddSpeedControl(HSprite __instance)
         {
-            //bool onPad = __instance.IsCursorOnPad();
-            var onPad = true;
-            //Plugin.Instance.Logger.LogInfo($"Cursor on pad: {onPad}");
-            if (onPad && Input.touchCount == 1)
+            var touchDownHandler = new EventTrigger.Entry() { eventID = EventTriggerType.PointerDown };
+            touchDownHandler.callback.AddListener((_) => PointerDownHandler(__instance));
+
+            var touchUpHandler = new EventTrigger.Entry() { eventID = EventTriggerType.PointerUp };
+            touchUpHandler.callback.AddListener((_) => PointerUpHandler(__instance));
+
+            var dragHandler = new EventTrigger.Entry() { eventID = EventTriggerType.Drag };
+            dragHandler.callback.AddListener((data) => DragHandler(__instance, (PointerEventData)data));
+
+            // Seems that `selectUIPads` is pre-defined in the scene.
+            foreach (var pad in __instance.selectUIPads)
             {
+                var trigger = pad.gameObject.GetComponent<EventTrigger>();
+                if (trigger == null) continue;
+
+                trigger.triggers.Add(touchDownHandler);
+                trigger.triggers.Add(touchUpHandler);
+                trigger.triggers.Add(dragHandler);
+            }
+        }
+
+        private static Vector2? dragStart = null;
+        private static bool? isDragVertical = false;
+
+        public static void DragHandler(HSprite instance, PointerEventData eventData)
+        {
+            if (dragStart == null) return;
+            Vector2 deltaPos = eventData.position - dragStart.Value;
+            if (isDragVertical == null && deltaPos.sqrMagnitude >= 10 * 10)
+            {
+                isDragVertical = Mathf.Abs(deltaPos.y) > Mathf.Abs(deltaPos.x);
+            }
+
+            if (isDragVertical.HasValue && isDragVertical.Value)
+            {
+                // Vertical drag,
                 var canvas = GameObject.Find("Canvas")?.GetComponent<Canvas>();
                 float ySize = 100f;
                 if (canvas != null) ySize *= canvas.scaleFactor;
 
+                float spd = eventData.delta.y / ySize;
+                instance.flags.SpeedUpClick(spd, 1f);
+            }
+            else if (isDragVertical.HasValue && !isDragVertical.Value)
+            {
+                var canvas = GameObject.Find("Canvas")?.GetComponent<Canvas>();
+
+                float motionChangeThreshold = 50f;
+                if (canvas != null) motionChangeThreshold *= canvas.scaleFactor;
+
+                if (Mathf.Abs(deltaPos.x) > motionChangeThreshold)
+                {
+                    instance.flags.click = HFlag.ClickKind.motionchange;
+                    dragStart = null;
+                }
+            }
+        }
+
+        public static void PointerDownHandler(HSprite __instance)
+        {
+            if (Input.touchCount == 1)
+            {
                 int fingerId = Input.GetTouch(0).fingerId;
                 TouchPressDetector touchDetector = Plugin.Instance.TouchDetector;
                 touchDetector.Update();
-                var state = touchDetector.GetTouchTime(fingerId);
+
+                var state = touchDetector.GetState(fingerId);
+                Plugin.Instance.Logger.LogInfo(state.ToString() ?? "null");
+
+                dragStart = Input.GetTouch(0).position;
+
                 if (state != null)
                 {
-                    if (state.hasMoved)
-                    {
-                        ___flags.SpeedUpClick(Input.GetTouch(0).deltaPosition.y / ySize, 1f);
-                    }
-                    else
+                    if (!state.hasMoved)
                     {
                         if (speedControlLastClick != fingerId)
                         {
-                            state.onLongPressCallback += (touch) =>
+                            //state.onLongPressCallback += (touch) =>
+                            //{
+                            //    __instance.flags.click = HFlag.ClickKind.motionchange;
+                            //    Plugin.Instance.Logger.LogDebug("Changing motion");
+                            //};
+                            state.onDoubleClickCallback += (touch) =>
                             {
-                                ___flags.click = HFlag.ClickKind.motionchange;
+                                __instance.flags.click = HFlag.ClickKind.modeChange;
                                 Plugin.Instance.Logger.LogDebug("Changing mode");
                             };
-                            state.onDoubleClickCallback += (touch) =>
-                             {
-                                 ___flags.click = HFlag.ClickKind.modeChange;
-                                 Plugin.Instance.Logger.LogDebug("Changing mode");
-                             };
                             state.onPressCancelCallback += (touch) =>
                             {
                                 speedControlLastClick = null;
@@ -183,16 +287,19 @@ namespace Karenia.GetTapped.KK
                     }
                 }
             }
-            else if (onPad && Input.touchCount == 2)
+            else if (Input.touchCount == 2)
             {
-                ___flags.click = HFlag.ClickKind.motionchange;
+                __instance.flags.click = HFlag.ClickKind.motionchange;
                 Plugin.Instance.Logger.LogDebug("Changing motion");
             }
-            else if (onPad && Input.touchCount == 3)
-            {
-                ___flags.click = HFlag.ClickKind.modeChange;
-                Plugin.Instance.Logger.LogDebug("Changing mode");
-            }
+        }
+
+        public static void PointerUpHandler(HSprite __instance)
+        {
+            Plugin.Instance.Logger.LogInfo("Pointer up");
+            Plugin.Instance.TouchDetector.Update();
+            dragStart = null;
+            isDragVertical = null;
         }
     }
 }

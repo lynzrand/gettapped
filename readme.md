@@ -6,14 +6,14 @@ Various plugins and fixes, for various Unity-based eroges.
 
 ### GetTapped
 
-Touch to camera motion adaptor for tablet users. May also contain fixes or features for touch environments.
+Adds mouse-only features (e.g. camera rotation) to tablet users. May also contain fixes.
 
 | Game     | Project | Status |
 |----------|---------|---------|
 | (Plugin core)|GetTapped.Core|✅
 | KoiKatsu | GetTapped.KK| ✅
-| Insult Order | GetTapped.IO|✅
-| COM3D2 | GetTapped.com3d2 | ✅
+| Insult Order | GetTapped.IO| ❔
+| COM3D2 | GetTapped.com3d2 | ❔
 
 ### FixKPlug
 

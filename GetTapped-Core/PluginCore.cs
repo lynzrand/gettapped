@@ -19,8 +19,8 @@ namespace Karenia.GetTapped.Core
         public ConfigEntry<float> ZoomSensitivity;
         public ConfigEntry<float> TranslationSensitivity;
 
-        public float DefaultRotationSensitivity { get; set; } = 0.3f;
-        public float DefaultZoomSensitivity { get; set; } = 0.1f;
+        public float DefaultRotationSensitivity { get; set; } = 0.4f;
+        public float DefaultZoomSensitivity { get; set; } = 0.3f;
         public float DefaultTranslationSensitivity { get; set; } = 0.1f;
 
         public virtual void BindConfig(ConfigFile Config)

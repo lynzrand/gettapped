@@ -1,42 +1,46 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net35</TargetFramework>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net35</TargetFramework>
+		<Version>0.3.0</Version>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\GetTapped-Core\GetTapped-Core.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\GetTapped-Core\GetTapped-Core.csproj" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <Reference Include="BepInEx">
-      <HintPath>..\reference\BepInEx.dll</HintPath>
-    </Reference>
-    <Reference Include="HarmonyLib">
-      <HintPath>..\reference\0Harmony.dll</HintPath>
-    </Reference>
-    <Reference Include="BepInEx.Harmony">
-      <HintPath>..\reference\BepInEx.Harmony.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine">
-      <HintPath>..\reference\UnityEngine.unity5.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.UI">
-      <HintPath>..\reference\UnityEngine.UI.unity5.dll</HintPath>
-    </Reference>
-    <Reference Include="*">
-      <HintPath>..\reference\games\koikatsu\Assembly-CSharp.dll</HintPath>
-    </Reference>
-  </ItemGroup>
+	<ItemGroup>
+		<Reference Include="BepInEx">
+			<HintPath>..\reference\BepInEx.dll</HintPath>
+		</Reference>
+		<Reference Include="HarmonyLib">
+			<HintPath>..\reference\0Harmony.dll</HintPath>
+		</Reference>
+		<Reference Include="BepInEx.Harmony">
+			<HintPath>..\reference\BepInEx.Harmony.dll</HintPath>
+		</Reference>
+		<Reference Include="UnityEngine">
+			<HintPath>..\reference\UnityEngine.unity5.dll</HintPath>
+		</Reference>
+		<Reference Include="UnityEngine.UI">
+			<HintPath>..\reference\UnityEngine.UI.unity5.dll</HintPath>
+		</Reference>
+		<Reference Include="*">
+			<HintPath>..\reference\games\koikatsu\Assembly-CSharp.dll</HintPath>
+		</Reference>
+	</ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="ILMerge" Version="3.0.41" />
-  </ItemGroup>
+	<ItemGroup>
+		<Reference Remove="readme.md" />
+	</ItemGroup>
 
+	<ItemGroup>
+		<PackageReference Include="ILMerge" Version="3.0.41" />
+	</ItemGroup>
 
-
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <MakeDir Directories="../Release/GetTappedKK/BepInEx/plugins" />
-    <Copy SourceFiles="./$(OutDir)GetTapped.KK.dll;./$(OutDir)GetTapped-Core.dll" DestinationFolder="../Release/GetTappedKK/BepInEx/plugins" />
-  </Target>
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+		<MakeDir Directories="../Release/GetTappedKK/BepInEx/plugins" />
+		<Copy SourceFiles="./$(OutDir)GetTapped.KK.dll;./$(OutDir)GetTapped-Core.dll" DestinationFolder="../Release/GetTappedKK/BepInEx/plugins" />
+		<Copy SourceFiles="readme.md" DestinationFiles="../Release/GetTappedKK/readme.md" />
+	</Target>
 </Project>

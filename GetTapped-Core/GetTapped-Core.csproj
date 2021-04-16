@@ -1,29 +1,28 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net35</TargetFramework>
-    <RootNamespace>Karenia.GetTapped.Core</RootNamespace>
-    <LangVersion>8.0</LangVersion>
-    <Nullable>enable</Nullable>
-    <Version>0.2.0</Version>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net35</TargetFramework>
+		<RootNamespace>Karenia.GetTapped.Core</RootNamespace>
+		<LangVersion>8.0</LangVersion>
+		<Nullable>enable</Nullable>
+		<Version>0.3.0</Version>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <Reference Include="UnityEngine">
-      <HintPath>..\reference\UnityEngine.unity5.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.UI">
-      <HintPath>..\reference\UnityEngine.UI.unity5.dll</HintPath>
-    </Reference>
-    <Reference Include="BepInEx">
-      <HintPath>..\reference\BepInEx.dll</HintPath>
-    </Reference>
-    <Reference Include="HarmonyLib">
-      <HintPath>..\reference\0Harmony.dll</HintPath>
-    </Reference>
-    <Reference Include="BepInEx.Harmony">
-      <HintPath>..\reference\BepInEx.Harmony.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-
+	<ItemGroup>
+		<Reference Include="UnityEngine">
+			<HintPath>..\reference\UnityEngine.unity5.dll</HintPath>
+		</Reference>
+		<Reference Include="UnityEngine.UI">
+			<HintPath>..\reference\UnityEngine.UI.unity5.dll</HintPath>
+		</Reference>
+		<Reference Include="BepInEx">
+			<HintPath>..\reference\BepInEx.dll</HintPath>
+		</Reference>
+		<Reference Include="HarmonyLib">
+			<HintPath>..\reference\0Harmony.dll</HintPath>
+		</Reference>
+		<Reference Include="BepInEx.Harmony">
+			<HintPath>..\reference\BepInEx.Harmony.dll</HintPath>
+		</Reference>
+	</ItemGroup>
 </Project>

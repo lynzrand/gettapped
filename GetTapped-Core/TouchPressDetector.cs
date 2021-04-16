@@ -7,7 +7,7 @@ namespace Karenia.GetTapped.Util
     public class TouchState
     {
         public bool hasMoved = false;
-        public float activeTime = 0f;
+        public float startTime = 0f;
 
         public event Action<TouchState>? onLongPressCallback = null;
 
@@ -38,9 +38,9 @@ namespace Karenia.GetTapped.Util
             onPressCancelCallback = null;
         }
 
-        public void OnFinish(float longPressThreshold)
+        public void OnFinish(float currentTime, float longPressThreshold)
         {
-            if (activeTime >= longPressThreshold)
+            if ((currentTime - startTime) >= longPressThreshold)
             {
                 if (onLongPressCallback != null)
                     onLongPressCallback.Invoke(this);
@@ -51,6 +51,11 @@ namespace Karenia.GetTapped.Util
                     onShortPressCallback.Invoke(this);
             }
             ClearCallbacks();
+        }
+
+        public override string ToString()
+        {
+            return $"TouchState {{ pressStartTime={startTime}, hasMoved={hasMoved} }}";
         }
     }
 
@@ -69,7 +74,13 @@ namespace Karenia.GetTapped.Util
         private float lastRelease = 0;
 
         /// <summary>
-        /// Updates the internal state to the latest. This method automatically debounce calls to 1/frame.
+        /// Updates the internal state to the latest.
+        ///
+        /// <para>
+        /// This method automatically debounces calls to 1/frame, and is not required to be
+        /// called every frame.
+        /// </para>
+        ///
         /// </summary>
         public void Update()
         {
@@ -88,13 +99,12 @@ namespace Karenia.GetTapped.Util
                         break;
 
                     case TouchPhase.Stationary:
-                        touchStates[fingerId].activeTime += touch.deltaTime;
+                        touchStates[fingerId].startTime = Time.unscaledTime;
                         break;
 
                     case TouchPhase.Moved:
                         {
                             TouchState touchState = touchStates[fingerId];
-                            touchState.activeTime += touch.deltaTime;
 
                             touchState.hasMoved = true;
                             touchState.OnPressCancel();
@@ -102,16 +112,27 @@ namespace Karenia.GetTapped.Util
                         break;
 
                     case TouchPhase.Canceled:
+                        {
+                            touchStates.Remove(fingerId);
+                        }
+                        break;
+
                     case TouchPhase.Ended:
                         {
                             var touchState = touchStates[fingerId];
 
                             var thisRelease = Time.unscaledTime;
-                            if (thisRelease - lastRelease < 0.6f)
+                            if (thisRelease - lastRelease < 0.6f && !touchState.hasMoved)
+                            {
                                 touchState.OnDoubleClick();
-                            lastRelease = Time.unscaledTime;
+                                lastRelease = float.NegativeInfinity;
+                            }
+                            else if (!touchState.hasMoved)
+                            {
+                                lastRelease = Time.unscaledTime;
+                            }
 
-                            touchState.OnFinish(LongPressThreshold);
+                            touchState.OnFinish(thisRelease, LongPressThreshold);
                             touchStates.Remove(fingerId);
                         }
                         break;
@@ -140,7 +161,7 @@ namespace Karenia.GetTapped.Util
             }
         }
 
-        public TouchState? GetTouchTime(int touchId)
+        public TouchState? GetState(int touchId)
         {
             if (touchStates.TryGetValue(touchId, out var state))
             {
