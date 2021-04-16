@@ -8,14 +8,34 @@ namespace Karenia.GetTapped.Util
     {
         public bool hasMoved = false;
         public float activeTime = 0f;
+
         public event Action<TouchState>? onLongPressCallback = null;
+
         public event Action<TouchState>? onShortPressCallback = null;
+
         public event Action<TouchState>? onPressCancelCallback = null;
+
+        public event Action<TouchState>? onDoubleClickCallback = null;
 
         public void OnPressCancel()
         {
             if (onPressCancelCallback != null)
                 onPressCancelCallback.Invoke(this);
+            ClearCallbacks();
+        }
+
+        public void OnDoubleClick()
+        {
+            if (onDoubleClickCallback != null)
+                onDoubleClickCallback.Invoke(this);
+            ClearCallbacks();
+        }
+
+        private void ClearCallbacks()
+        {
+            onLongPressCallback = null;
+            onShortPressCallback = null;
+            onPressCancelCallback = null;
         }
 
         public void OnFinish(float longPressThreshold)
@@ -30,6 +50,7 @@ namespace Karenia.GetTapped.Util
                 if (onShortPressCallback != null)
                     onShortPressCallback.Invoke(this);
             }
+            ClearCallbacks();
         }
     }
 
@@ -40,12 +61,21 @@ namespace Karenia.GetTapped.Util
 
     public class TouchPressDetector
     {
-
         private readonly Dictionary<int, TouchState> touchStates = new Dictionary<int, TouchState>();
-        public float LongPressThreshold { get; set; } = 2f;
+        public float LongPressThreshold { get; set; } = 1f;
 
-        public void LateUpdate()
+        private int lastRunFrame = -1;
+
+        private float lastRelease = 0;
+
+        /// <summary>
+        /// Updates the internal state to the latest. This method automatically debounce calls to 1/frame.
+        /// </summary>
+        public void Update()
         {
+            if (lastRunFrame == Time.frameCount) return;
+            else lastRunFrame = Time.frameCount;
+
             var touchCount = Input.touchCount;
             for (var i = 0; i < touchCount; i++)
             {
@@ -56,21 +86,31 @@ namespace Karenia.GetTapped.Util
                     case TouchPhase.Began:
                         touchStates.Add(fingerId, new TouchState());
                         break;
+
                     case TouchPhase.Stationary:
                         touchStates[fingerId].activeTime += touch.deltaTime;
                         break;
+
                     case TouchPhase.Moved:
                         {
                             TouchState touchState = touchStates[fingerId];
-                            touchState.hasMoved = true;
                             touchState.activeTime += touch.deltaTime;
+
+                            touchState.hasMoved = true;
                             touchState.OnPressCancel();
                         }
                         break;
+
                     case TouchPhase.Canceled:
                     case TouchPhase.Ended:
                         {
                             var touchState = touchStates[fingerId];
+
+                            var thisRelease = Time.unscaledTime;
+                            if (thisRelease - lastRelease < 0.6f)
+                                touchState.OnDoubleClick();
+                            lastRelease = Time.unscaledTime;
+
                             touchState.OnFinish(LongPressThreshold);
                             touchStates.Remove(fingerId);
                         }
@@ -88,9 +128,11 @@ namespace Karenia.GetTapped.Util
                     case EventState.LongPress:
                         state.onLongPressCallback += callback;
                         break;
+
                     case EventState.PressCancel:
                         state.onPressCancelCallback += callback;
                         break;
+
                     case EventState.ShortPress:
                         state.onShortPressCallback += callback;
                         break;

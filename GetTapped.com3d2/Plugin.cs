@@ -41,7 +41,7 @@ namespace Karenia.GetTapped.Com3d2
 
         public void LateUpdate()
         {
-            TouchPressDetector.LateUpdate();
+            TouchPressDetector.Update();
         }
 
         public static Plugin Instance { get; private set; }

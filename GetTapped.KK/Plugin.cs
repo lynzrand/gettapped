@@ -14,7 +14,6 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using Karenia.GetTapped.Util;
 
-
 namespace Karenia.GetTapped.KK
 {
     [BepInPlugin(id, projectName, version)]
@@ -22,20 +21,24 @@ namespace Karenia.GetTapped.KK
     {
         public const string id = "cc.karenia.gettapped.kk";
         public const string projectName = "GetTapped.KK";
-        public const string version = "0.2.0";
+        public const string version = "0.2.1";
 
         public Plugin()
         {
             PluginConfig = new PluginConfig();
             PluginConfig.BindConfig(Config);
             Logger = BepInEx.Logging.Logger.CreateLogSource("GetTapped");
-            TouchDetector = new TouchPressDetector();
             Core = new PluginCore();
             Instance = this;
             harmony = new Harmony(id);
             harmony.PatchAll(typeof(Hook));
             // FIXME: It's not working now
-            //harmony.PatchAll(typeof(HTouchControlHook));
+            harmony.PatchAll(typeof(HTouchControlHook));
+        }
+
+        public void Update()
+        {
+            TouchDetector.Update();
         }
 
         public static Plugin Instance { get; private set; }
@@ -45,10 +48,9 @@ namespace Karenia.GetTapped.KK
 
         private readonly Harmony harmony;
 
-        public TouchPressDetector TouchDetector { get; private set; }
+        public TouchPressDetector TouchDetector { get; private set; } = new TouchPressDetector();
 
         public IGetTappedPlugin Core { get; private set; }
-
     }
 
     public static class Hook
@@ -57,11 +59,11 @@ namespace Karenia.GetTapped.KK
         {
         }
 
-        static readonly Type CamDat = AccessTools.Inner(typeof(BaseCameraControl), "CameraData");
-        static readonly FieldInfo CamDatField = AccessTools.Field(typeof(BaseCameraControl), "CamDat");
-        static readonly FieldInfo CamDatDir = AccessTools.Field(CamDat, "Dir");
-        static readonly FieldInfo CamDatRot = AccessTools.Field(CamDat, "Rot");
-        static readonly FieldInfo CamDatPos = AccessTools.Field(CamDat, "Pos");
+        private static readonly Type CamDat = AccessTools.Inner(typeof(BaseCameraControl), "CameraData");
+        private static readonly FieldInfo CamDatField = AccessTools.Field(typeof(BaseCameraControl), "CamDat");
+        private static readonly FieldInfo CamDatDir = AccessTools.Field(CamDat, "Dir");
+        private static readonly FieldInfo CamDatRot = AccessTools.Field(CamDat, "Rot");
+        private static readonly FieldInfo CamDatPos = AccessTools.Field(CamDat, "Pos");
 
         [HarmonyPostfix]
         [HarmonyPatch(typeof(CameraControl_Ver2), "Start")]
@@ -70,7 +72,7 @@ namespace Karenia.GetTapped.KK
             Plugin.Instance.Logger.LogInfo("Should be hooked now");
         }
 
-        static int lastFrame = -1;
+        private static int lastFrame = -1;
 
         private static readonly List<RaycastResult> raycastResultsSketchpad = new List<RaycastResult>();
 
@@ -96,13 +98,12 @@ namespace Karenia.GetTapped.KK
             Vector3 rot = (Vector3)CamDatRot.GetValue(camdat);
             dir.z *= Mathf.Clamp(dir.z + (movement.Zoom * pluginConfig.ZoomSensitivity.Value - 1), 0, float.PositiveInfinity);
             pos += __instance.transform.TransformDirection(movement.ScreenSpaceTranslation * pluginConfig.TranslationSensitivity.Value * 0.01f);
-            rot += new Vector3(movement.ScreenSpaceRotation.y, movement.ScreenSpaceRotation.x, 0) * 0.1f * pluginConfig.RotationSensitivity.Value;
+            rot += new Vector3(movement.ScreenSpaceRotation.y, -movement.ScreenSpaceRotation.x, 0) * 0.1f * pluginConfig.RotationSensitivity.Value;
             CamDatDir.SetValue(camdat, dir);
             CamDatPos.SetValue(camdat, pos);
             CamDatRot.SetValue(camdat, rot);
             CamDatField.SetValue(__instance, camdat);
         }
-
 
         [HarmonyPrefix]
         [HarmonyPatch(typeof(BaseCameraControl_Ver2), "CameraUpdate")]
@@ -120,53 +121,79 @@ namespace Karenia.GetTapped.KK
             PluginConfig pluginConfig = instance.PluginConfig;
             camdat.Dir.z = Mathf.Clamp(camdat.Dir.z + (movement.Zoom * pluginConfig.ZoomSensitivity.Value - 1), 0, float.PositiveInfinity);
             camdat.Pos += __instance.transform.TransformDirection(movement.ScreenSpaceTranslation * pluginConfig.TranslationSensitivity.Value * 0.01f);
-            camdat.Rot += new Vector3(movement.ScreenSpaceRotation.y, movement.ScreenSpaceRotation.x, 0) * 0.1f * pluginConfig.RotationSensitivity.Value;
+            camdat.Rot += new Vector3(movement.ScreenSpaceRotation.y, -movement.ScreenSpaceRotation.x, 0) * 0.1f * pluginConfig.RotationSensitivity.Value;
             __instance.SetCameraData(camdat);
         }
-
     }
 
     // FIXME: Controlling speed via sliding on related menu doesn't work yet
-#if false
     public static class HTouchControlHook
     {
         private static int? speedControlLastClick = null;
 
         [HarmonyPostfix]
-        [HarmonyPatch(typeof(HSonyu), "LoopProc")]
-        [HarmonyPatch(typeof(HHoushi), "LoopProc")]
-        [HarmonyPatch(typeof(H3PSonyu), "LoopProc")]
-        [HarmonyPatch(typeof(H3PHoushi), "LoopProc")]
-        [HarmonyPatch(typeof(H3PDarkSonyu), "LoopProc")]
-        [HarmonyPatch(typeof(H3PDarkHoushi), "LoopProc")]
-        public static void HSpeedControl(HSprite ___sprite, HFlag ___flags, HActionBase __instance)
+        //[HarmonyPatch(typeof(HSonyu), "LoopProc")]
+        //[HarmonyPatch(typeof(HHoushi), "LoopProc")]
+        //[HarmonyPatch(typeof(H3PSonyu), "LoopProc")]
+        //[HarmonyPatch(typeof(H3PHoushi), "LoopProc")]
+        //[HarmonyPatch(typeof(H3PDarkSonyu), "LoopProc")]
+        //[HarmonyPatch(typeof(H3PDarkHoushi), "LoopProc")]
+        [HarmonyPatch(typeof(HSprite), "OnSpeedUpClick")]
+        public static void HSpeedControl(HSprite __instance, HFlag ___flags)
         {
-            Plugin.Instance.Logger.LogInfo($"Cursor on pad: {___sprite.IsCursorOnPad()}");
-            if (___sprite.IsCursorOnPad() && Input.touchCount == 1)
+            //bool onPad = __instance.IsCursorOnPad();
+            var onPad = true;
+            //Plugin.Instance.Logger.LogInfo($"Cursor on pad: {onPad}");
+            if (onPad && Input.touchCount == 1)
             {
                 var canvas = GameObject.Find("Canvas")?.GetComponent<Canvas>();
                 float ySize = 100f;
                 if (canvas != null) ySize *= canvas.scaleFactor;
 
                 int fingerId = Input.GetTouch(0).fingerId;
-                var state = Plugin.Instance.TouchDetector.GetTouchTime(fingerId);
-                if (state.hasMoved)
+                TouchPressDetector touchDetector = Plugin.Instance.TouchDetector;
+                touchDetector.Update();
+                var state = touchDetector.GetTouchTime(fingerId);
+                if (state != null)
                 {
-                    ___flags.SpeedUpClick(Input.GetTouch(0).deltaPosition.y / ySize, 1f);
-                }
-                else
-                {
-                    if (speedControlLastClick != fingerId)
+                    if (state.hasMoved)
                     {
-                        state.onLongPressCallback += (touch) =>
+                        ___flags.SpeedUpClick(Input.GetTouch(0).deltaPosition.y / ySize, 1f);
+                    }
+                    else
+                    {
+                        if (speedControlLastClick != fingerId)
                         {
-                            //__instance.MotionChange()
-                        };
+                            state.onLongPressCallback += (touch) =>
+                            {
+                                ___flags.click = HFlag.ClickKind.motionchange;
+                                Plugin.Instance.Logger.LogDebug("Changing mode");
+                            };
+                            state.onDoubleClickCallback += (touch) =>
+                             {
+                                 ___flags.click = HFlag.ClickKind.modeChange;
+                                 Plugin.Instance.Logger.LogDebug("Changing mode");
+                             };
+                            state.onPressCancelCallback += (touch) =>
+                            {
+                                speedControlLastClick = null;
+                            };
+                            speedControlLastClick = fingerId;
+                        }
                     }
                 }
             }
+            else if (onPad && Input.touchCount == 2)
+            {
+                ___flags.click = HFlag.ClickKind.motionchange;
+                Plugin.Instance.Logger.LogDebug("Changing motion");
+            }
+            else if (onPad && Input.touchCount == 3)
+            {
+                ___flags.click = HFlag.ClickKind.modeChange;
+                Plugin.Instance.Logger.LogDebug("Changing mode");
+            }
         }
     }
-#endif
 }
 
