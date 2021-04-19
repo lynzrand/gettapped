@@ -32,6 +32,12 @@ Generate fixational eye movement for characters to make them more life-like.
 |(Plugin core)|FixEyeMov.Core |✅
 |COM3D2 |FixEyeMov.com3d2|✅
 
+### SocialForces
+
+Implements the [Social Forces algorithm][socialforces] (Dirk Helbing, et al. 1998) in Koikatsu.
+
+I have ABSOLUTELY no idea why I'm doing this.
+
 ## Installing
 
 **Requires:**
