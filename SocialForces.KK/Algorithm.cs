@@ -12,49 +12,65 @@ namespace Karenia.SocialForces.KK
     public static class Algorithm
     {
         // tau_a
-        private const float relaxationTime = 0.5f;
+        private static float relaxationTime = 0.5f;
 
-        // delta_t
-        private const float velocityPredictionTime = 2f;
+        private static float deltaT_social = 1.27f;
+        private static float sigma_social = 2f;
+        private static float force_social = 4f;
 
-        // sigma
-        private const float velocityRepulsiveRange = 0.3f;
+        private static float deltaT_attract = 1f;
+        private static float sigma_attract = 10f;
+        private static float force_attract = 3f;
 
-        // V_{\alpha\beta}^0
-        private const float velocityRepulsiveCoeff = 2.1f;
+        private static float sigma_obstacle = 0.2f;
+        private static float force_obstacle = 20.5f;
 
-        private const float effectiveAngle = 100f;
-        private const float effectiveCoeff = 0.5f;
+        private static float target_slowdown = 2f;
 
-        private const float fluctuationCoeff = 0.02f;
+        private static float effectiveAngle = 100f;
+        private static float effectiveCoeff = 0.5f;
 
-        public static Forces CalculateAcceleration(
-            int currentIdentifier,
-            Vector3 position,
-            Vector3 desiredDirection,
-            Vector3 currentSpeed,
+        private static float fluctuationCoeff = 0.02f;
+
+        public static Forces CalculateAcceleration<T, NeighborEnumerator, AttractorEnumerator>(
+            Neighbor<T> self,
+            Vector3 targetPosition,
             float desiredSpeed,
-            IEnumerable<Pedestrian> otherPedestrians,
-            Func<int, int, float> repulsionCoeff,
+            NeighborEnumerator neighbors,
+            Func<T, T, float> repulsionCoeff,
             Vector3? border,
-            IEnumerable<Pedestrian> attractions,
-            Func<int, int, float> attractionCoeff,
+            AttractorEnumerator attractors,
+            Func<T, T, float> attractionCoeff,
+            bool is_final_target,
             bool debug = false
         )
+            where NeighborEnumerator : IEnumerable<Neighbor<T>>
+            where AttractorEnumerator : IEnumerable<Neighbor<T>>
         {
+            var desiredDirection = targetPosition - self.position;
             desiredDirection.y = 0;
-            desiredDirection.Normalize();
+            //desiredDirection.Normalize();
+
+            // slow down in quadratic fashion
+            const float cbrt_3 = 1.4422496f;
+            var pending_distance = (targetPosition - self.position).magnitude;
+            if (is_final_target && pending_distance < desiredSpeed * target_slowdown)
+            {
+                var pending_time = cbrt_3 * Mathf.Pow(pending_distance / desiredSpeed, 0.33333333f);
+                desiredSpeed *= Mathf.Pow(pending_time / target_slowdown, 2);
+            }
+
             // Destination term
-            var destinationTerm = (1 / relaxationTime) * (desiredSpeed * desiredDirection - currentSpeed);
+            var destinationTerm = 1 / relaxationTime * ((desiredSpeed * desiredDirection.normalized) - self.velocity);
 
             // Other pedestrian repulsion term
             var repulsionTerm = Vector3.zero;
-            foreach (var repulsor in otherPedestrians)
+            foreach (var repulsor in neighbors)
             {
-                var repulsion = RepulsionFromPedestrian(position, repulsor, repulsionCoeff(currentIdentifier, repulsor.id));
+                var repulsion = Repulsion(self, repulsor, repulsionCoeff(self.id, repulsor.id) * force_social,
+                    sigma_social, deltaT_social);
 
-                if (Vector3.Angle((Vector3)desiredDirection, repulsor.position - position) > effectiveAngle)
-                    repulsion *= effectiveCoeff;
+                var isotrophy = 0.7 + 0.3 * (1 - Mathf.Cos(Vector3.Angle(repulsor.position - self.position, desiredDirection))) / 2;
 
                 repulsionTerm += repulsion;
             }
@@ -63,18 +79,21 @@ namespace Karenia.SocialForces.KK
             var borderRepulsionTerm = Vector3.zero;
             if (border != null)
             {
-                borderRepulsionTerm = -RepulsionFromBorder(position, border.Value);
-                if (Vector3.Angle((Vector3)desiredDirection, border.Value - position) > effectiveAngle)
-                    borderRepulsionTerm *= effectiveCoeff;
+                if (Vector2.Distance(border.Value, targetPosition) > 0.5f)
+                {
+                    borderRepulsionTerm = RepulsionFromBorder(self.position, border.Value);
+                    if (Vector3.Angle(desiredDirection, border.Value - self.position) > effectiveAngle)
+                        borderRepulsionTerm *= effectiveCoeff;
+                }
             }
 
             // attraction term
             var attractionTerm = Vector3.zero;
-            foreach (var attractor in attractions)
+            foreach (var attractor in attractors)
             {
-                var attraction = RepulsionFromPedestrian(position, attractor, attractionCoeff(currentIdentifier, attractor.id));
+                var attraction = Repulsion(self, attractor, -attractionCoeff(self.id, attractor.id) * force_attract, sigma_attract, deltaT_attract);
 
-                if (Vector3.Angle((Vector3)desiredDirection, attractor.position - position) > effectiveAngle)
+                if (Vector3.Angle(desiredDirection, attractor.position - self.position) > effectiveAngle)
                     attraction *= effectiveCoeff;
 
                 attractionTerm += attraction;
@@ -82,15 +101,8 @@ namespace Karenia.SocialForces.KK
 
             var fluctuations = UnityEngine.Random.insideUnitCircle * fluctuationCoeff;
 
-            if (debug)
-            {
-                Plugin.Instance.Logger.LogInfo(
-                    $"Forces(id={currentIdentifier},\ncurrentPos={position}, destPos={desiredDirection},\ndestinationTerm={destinationTerm}, repulsion={repulsionTerm}, attraction={attractionTerm}, border={borderRepulsionTerm}, fluctuation={fluctuations})"
-                    );
-            }
-
             var fluctuations3 = new Vector3(fluctuations.x, 0, fluctuations.y);
-            return new Forces()
+            var forces = new Forces()
             {
                 destination = destinationTerm,
                 attraction = attractionTerm,
@@ -98,43 +110,66 @@ namespace Karenia.SocialForces.KK
                 border = borderRepulsionTerm,
                 fluctuation = fluctuations3
             };
+
+            //if (debug)
+            //{
+            //    Plugin.Instance.Logger.LogInfo($"self: {self}");
+            //    Plugin.Instance.Logger.LogInfo(forces);
+            //}
+
+            return forces;
         }
 
-        public static Vector3 RepulsionFromPedestrian(Vector3 position, Pedestrian pedestrian, float coeff)
+        public static Vector3 Repulsion<T>(
+            Neighbor<T> self, Neighbor<T> neighbor, float coeff, float sigma, float deltaT)
         {
-            var direction = pedestrian.position - position;
-            var dir_mag = direction.magnitude;
+            if (coeff == 0) return Vector3.zero;
 
-            var vb_t = velocityPredictionTime * pedestrian.velocity;
-            var vbt_mag2 = vb_t.sqrMagnitude;
+            var rel_distance = self.position - neighbor.position;
+            var rel_velocity = self.velocity - neighbor.velocity;
+            var diff_position = rel_distance - rel_velocity * deltaT;
 
-            var dir_vbt = direction - vb_t;
-            var dir_vbt_mag = dir_vbt.magnitude;
+            var b = CalculateSocialB(rel_distance, rel_velocity);
 
-            float dir_mag_sq = (dir_mag + dir_vbt_mag) * (dir_mag + dir_vbt_mag);
-            float power = Mathf.Sqrt(-vbt_mag2 + dir_mag_sq);
+            var mag_diff_Position = diff_position.magnitude;
+            var force = Mathf.Exp(-b / sigma)
+                * Vector3.Scale(
+                    new Vector3(rel_distance.x + mag_diff_Position, 0, rel_distance.z + mag_diff_Position)
+                        / 4 * b,
+                    rel_distance.normalized + diff_position.normalized);
 
-            float common_term =
-                Mathf.Exp(power) * velocityRepulsiveCoeff
-                * (dir_mag + dir_vbt_mag)
-                / (velocityRepulsiveRange * power);
+            //Plugin.Instance.Logger.LogInfo($"{b} {rel_distance} {force} {coeff}");
 
-            var grad_x = common_term * (direction.x / dir_mag + dir_vbt.x / dir_vbt_mag);
-            var grad_z = common_term * (direction.z / dir_mag + dir_vbt.z / dir_vbt_mag);
+            return force * coeff;
+        }
 
-            return new Vector3(grad_x, 0, grad_z);
+        /// <summary>
+        /// Calculates the b term in repelling with other pedestrians
+        /// </summary>
+        /// <param name="relDistance"></param>
+        /// <param name="relVelocity"></param>
+        /// <returns></returns>
+        private static float CalculateSocialB(Vector3 relDistance, Vector3 relVelocity)
+        {
+            var normRelDistance = relDistance.magnitude;
+            var normRelVel = relVelocity.magnitude;
+            var t1 = normRelDistance + (relDistance - relVelocity * deltaT_social).magnitude;
+            var t2 = deltaT_social * normRelVel;
+            return 0.5f * Mathf.Sqrt(t1 * t1 + t2 * t2);
         }
 
         public static Vector3 RepulsionFromBorder(Vector3 position, Vector3 border)
         {
-            var direction = border - position;
-            var mag = direction.magnitude / 0.2f;
+            var direction = position - border;
 
-            float expmag = Mathf.Exp(-mag);
-            var grad_x = expmag * direction.x / mag;
-            var grad_z = expmag * direction.z / mag;
+            var force = force_obstacle * Mathf.Exp(-1 * (
+            direction / sigma_obstacle).magnitude) * direction.normalized;
 
-            return new Vector3(grad_x, 0, grad_z);
+            return force;
+        }
+
+        public static void SetupConfigBinding(BepInEx.Configuration.ConfigFile cfg)
+        {
         }
     }
 
@@ -145,7 +180,7 @@ namespace Karenia.SocialForces.KK
         public Vector3 Sum()
         {
             return destination
-                //+ repulsion
+                + repulsion
                 + attraction
                 + border
                 + fluctuation;
@@ -154,16 +189,21 @@ namespace Karenia.SocialForces.KK
         public override string ToString()
         {
             return
-               $"Forces(dest={destination}, repulsion={repulsion}, attraction={attraction}, border={border}, fluctuation={fluctuation})"
+               $"Forces(dest={destination},\n\trepulsion={repulsion},\n\tattraction={attraction},\n\tborder={border},\n\tfluctuation={fluctuation},\n\tsum={Sum()})"
                ;
         }
     }
 
-    public struct Pedestrian
+    public struct Neighbor<T>
     {
-        public int id;
+        public T id;
         public Vector3 position;
         public Vector3 velocity;
+
+        public override string ToString()
+        {
+            return $"Neighbor(id={id}, position={position}, velocity={velocity})";
+        }
     }
 
     public class ActivePerson
