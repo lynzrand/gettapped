@@ -37,7 +37,7 @@ namespace Karenia.SocialForces.KK
         public static void MoveChara(
             MapMove __instance)
         {
-            var startTime = System.Diagnostics.Stopwatch.StartNew();
+            //var startTime = System.Diagnostics.Stopwatch.StartNew();
             var npc = (NPC)mapMove_npc.GetValue(__instance);
 
             /// Original position of this NPC character
@@ -125,8 +125,8 @@ namespace Karenia.SocialForces.KK
                 mapMove_arrive.Invoke(__instance, null);
             }
 
-            startTime.Stop();
-            Plugin.Instance.Logger.LogInfo($"elapsed: {startTime.Elapsed.TotalMilliseconds}ms");
+            //startTime.Stop();
+            //Plugin.Instance.Logger.LogInfo($"elapsed: {startTime.Elapsed.TotalMilliseconds}ms");
         }
 
         private static Dictionary<ActionGame.Chara.Base, DebugLineRenderer> repo = new Dictionary<ActionGame.Chara.Base, DebugLineRenderer>();

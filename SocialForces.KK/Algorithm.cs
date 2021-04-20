@@ -15,11 +15,11 @@ namespace Karenia.SocialForces.KK
         private static float relaxationTime = 0.5f;
 
         private static float deltaT_social = 1.27f;
-        private static float sigma_social = 2f;
-        private static float force_social = 4f;
+        private static float sigma_social = 1f;
+        private static float force_social = 8f;
 
         private static float deltaT_attract = 1f;
-        private static float sigma_attract = 10f;
+        private static float sigma_attract = 2f;
         private static float force_attract = 3f;
 
         private static float sigma_obstacle = 0.2f;
