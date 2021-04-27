@@ -149,7 +149,7 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
             FarClip = config.Bind(section, nameof(FarClip), 50f, "POI Far clip distance");
             DebugRay = config.Bind(section, nameof(DebugRay), false, "Show debug ray and stuff");
             DebugLog = config.Bind(section, nameof(DebugLog), false, "Log debug information in console");
-            Enabled = config.Bind(section, nameof(Enabled), true, "Enable POI system (changing requires scene reload)");
+            Enabled = config.Bind(section, nameof(Enabled), false, "Enable POI system (changing requires scene reload)");
             if (targetWeightFactorFunction != null) TargetWeightFactorFunction = targetWeightFactorFunction;
             Logger = logger;
         }
@@ -488,6 +488,7 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
         public static Vector3? SetPoi(TBody __instance)
         {
             if (!Plugin.Instance?.PoiConfig.Enabled.Value ?? false) return null;
+            if (!enableByScene) return null;
             if (!poiRepo.TryGetValue(__instance, out var poi)) return null;
             if (__instance.boLockHeadAndEye) return null;
             var target = poi.Tick(Time.deltaTime);
@@ -996,6 +997,41 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
             }
         }
 
+        public static void PatchKagSceneTags(Harmony harmony)
+        {
+            var targets = new MethodInfo[]
+            {
+                AccessTools.Method(typeof(CharacterMgr), "Deactivate",new Type[]{ typeof(int), typeof(bool) }),
+                AccessTools.Method(typeof(CharacterMgr), "Activate"),
+                AccessTools.Method(typeof(CharacterMgr), "SetActive"),
+                AccessTools.Method(typeof(CharacterMgr), "CharaVisible"),
+                //AccessTools.Method(typeof(CharacterMgr), "AddProp"),
+                //AccessTools.Method(typeof(CharacterMgr), "SetProp"),
+                //AccessTools.Method(typeof(CharacterMgr), "ResetProp"),
+                //AccessTools.Method(typeof(CharacterMgr), "SetChinkoVisible"),
+                AccessTools.Method(typeof(CharacterMgr), "PresetSet", new Type[]{typeof(Maid), typeof(CharacterMgr.Preset), typeof(bool) }),
+                AccessTools.Method(typeof(CharacterMgr), "PresetSet", new Type[]{typeof(Maid), typeof(CharacterMgr.Preset) }),
+                AccessTools.Method(typeof(BaseKagManager), "TagItemMaskMode"),
+                AccessTools.Method(typeof(BaseKagManager), "TagAddAllOffset"),
+                AccessTools.Method(typeof(BaseKagManager), "TagAddPrefabChara"),
+                AccessTools.Method(typeof(BaseKagManager), "TagConCharaActivate1stRanking"),
+                AccessTools.Method(typeof(BaseKagManager), "TagCompatibilityCharaActivate"),
+                AccessTools.Method(typeof(BaseKagManager), "TagConCharaActivateLeader"),
+                AccessTools.Method(typeof(BaseKagManager), "Initialize"),
+                AccessTools.Method(typeof(TBody), "UnInit"),
+                AccessTools.Method(typeof(TBody), "SetMask", new Type[]{typeof(TBody.SlotID), typeof(bool) }),
+                AccessTools.Method(typeof(TBody), "SetMask", new Type[]{typeof(MPN), typeof(bool) }),
+            };
+
+            var regenerateKagFunction = AccessTools.Method(typeof(PoiHook), nameof(RegenerateTargetsInKagScene));
+
+            foreach (var target in targets)
+            {
+                if (target == null) continue;
+                harmony.Patch(target, postfix: new HarmonyMethod(regenerateKagFunction));
+            }
+        }
+
         /// <summary>
         /// This method is responsible for regenerating targets every time the scene restarts.
         /// <para>
@@ -1009,26 +1045,6 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
         ///     now, we'll just discard those targets.
         /// </para>
         /// </summary>
-        [HarmonyPostfix]
-        [HarmonyPatch(typeof(CharacterMgr), "Deactivate", typeof(int), typeof(bool))]
-        [HarmonyPatch(typeof(CharacterMgr), "Activate")]
-        [HarmonyPatch(typeof(CharacterMgr), "SetActive")]
-        [HarmonyPatch(typeof(CharacterMgr), "CharaVisible")]
-        //[HarmonyPatch(typeof(CharacterMgr), "AddProp")]
-        //[HarmonyPatch(typeof(CharacterMgr), "SetProp")]
-        //[HarmonyPatch(typeof(CharacterMgr), "ResetProp")]
-        //[HarmonyPatch(typeof(CharacterMgr), "SetChinkoVisible")]
-        [HarmonyPatch(typeof(CharacterMgr), "PresetSet", typeof(Maid), typeof(CharacterMgr.Preset), typeof(bool))]
-        [HarmonyPatch(typeof(BaseKagManager), "TagItemMaskMode")]
-        [HarmonyPatch(typeof(BaseKagManager), "TagAddAllOffset")]
-        [HarmonyPatch(typeof(BaseKagManager), "TagAddPrefabChara")]
-        [HarmonyPatch(typeof(BaseKagManager), "TagConCharaActivate1stRanking")]
-        [HarmonyPatch(typeof(BaseKagManager), "TagCompatibilityCharaActivate")]
-        [HarmonyPatch(typeof(BaseKagManager), "TagConCharaActivateLeader")]
-        [HarmonyPatch(typeof(BaseKagManager), "Initialize")]
-        [HarmonyPatch(typeof(TBody), "UnInit")]
-        [HarmonyPatch(typeof(TBody), "SetMask", typeof(TBody.SlotID), typeof(bool))]
-        [HarmonyPatch(typeof(TBody), "SetMask", typeof(MPN), typeof(bool))]
         public static void RegenerateTargetsInKagScene()
         {
             foreach (var kv in poiRepo)

@@ -34,9 +34,9 @@ Generate fixational eye movement for characters to make them more life-like.
 
 ### SocialForces
 
-Implements the [Social Forces algorithm][socialforces] (Dirk Helbing, et al. 1998) in Koikatsu.
+Implements the [Social Forces model][socialforces] (Dirk Helbing, et al. 1998) in Koikatsu.
 
-I have ABSOLUTELY no idea why I'm doing this.
+I have ABSOLUTELY no idea why I'm doing this. It's buggy, and the numbers need a further refinement.
 
 ## Installing
 
