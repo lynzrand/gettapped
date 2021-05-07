@@ -18,7 +18,7 @@ namespace Karenia.FixEyeMov.Com3d2
     {
         public const string id = "cc.karenia.fixeyemov.com3d2";
         public const string projectName = "FixationalEyeMovements.COM3D2";
-        public const string version = "0.1.1";
+        public const string version = "0.2.2";
 
         public Plugin()
         {
@@ -47,7 +47,9 @@ namespace Karenia.FixEyeMov.Com3d2
             Logger = BepInEx.Logging.Logger.CreateLogSource("FixEyeMov");
             harmony = new Harmony(id);
 
-            var gameVersion = AccessTools.StaticFieldRefAccess<int>(typeof(Misc), "GAME_VERSION");
+            var gameVersion = Misc.GAME_VERSION;
+
+            Logger.LogDebug($"Game version is {gameVersion}. This is a debug message that might get useful in the future.");
 
             try
             {

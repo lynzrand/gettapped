@@ -997,6 +997,10 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
             }
         }
 
+        /// <summary>
+        /// Patch whichever method exists for updating targets in POI mode.
+        /// </summary>
+        /// <param name="harmony"></param>
         public static void PatchKagSceneTags(Harmony harmony)
         {
             var targets = new MethodInfo[]
@@ -1025,9 +1029,10 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
 
             var regenerateKagFunction = AccessTools.Method(typeof(PoiHook), nameof(RegenerateTargetsInKagScene));
 
+            // Just patch whichever function is valid.
             foreach (var target in targets)
             {
-                if (target == null) continue;
+                if (target is null) continue;
                 harmony.Patch(target, postfix: new HarmonyMethod(regenerateKagFunction));
             }
         }
@@ -1058,7 +1063,28 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
             }
         }
 
-        [HarmonyPostfix, HarmonyPatch(typeof(TBody), "LoadBody_R", typeof(string), typeof(Maid), typeof(int), typeof(bool))]
+        /// <summary>
+        /// Patch whichever method exists for initializing POI information.
+        /// </summary>
+        /// <param name="harmony"></param>
+        public static void PatchInitPoiInfo(Harmony harmony)
+        {
+            var targets = new MethodInfo[]
+            {
+                AccessTools.Method(typeof(TBody), "LoadBody_R", new Type[]{typeof(string), typeof(Maid), typeof(int), typeof(bool) }),
+                AccessTools.Method(typeof(TBody), "LoadBody_R", new Type[]{typeof(string), typeof(Maid) }),
+            };
+
+            var regenerateKagFunction = AccessTools.Method(typeof(PoiHook), nameof(InitPoiInfo));
+
+            // Just patch whichever function is valid.
+            foreach (var target in targets)
+            {
+                if (target is null) continue;
+                harmony.Patch(target, postfix: new HarmonyMethod(regenerateKagFunction));
+            }
+        }
+
         public static void InitPoiInfo(TBody __instance)
         {
             if (__instance.boMAN || __instance.trsHead == null) return;
