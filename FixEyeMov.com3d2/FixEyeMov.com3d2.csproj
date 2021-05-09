@@ -27,6 +27,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<Reference Remove="MiscPatches.cs" />
 		<Reference Remove="Plugin.cs" />
 		<Reference Remove="PointOfInterest.cs" />
 	</ItemGroup>

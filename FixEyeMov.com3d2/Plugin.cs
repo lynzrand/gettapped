@@ -53,6 +53,17 @@ namespace Karenia.FixEyeMov.Com3d2
 
             try
             {
+                Logger.LogDebug("Patching misc items");
+                MiscPatches.ApplyPatches(gameVersion, harmony, Logger);
+            }
+            catch (Exception e)
+            {
+                Logger.LogError("Error when applying misc patches");
+                Logger.LogError(e);
+            }
+
+            try
+            {
                 Logger.LogDebug("Patching Eye Movements");
                 harmony.PatchAll(typeof(EyeMovementHook));
             }
