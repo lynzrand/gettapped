@@ -49,7 +49,7 @@ namespace Karenia.FixEyeMov.Com3d2
 
             var gameVersion = Misc.GAME_VERSION;
 
-            Logger.LogDebug($"Game version is {gameVersion}. This is a debug message that might get useful in the future.");
+            //Logger.LogDebug($"Game version is {gameVersion}. This is a debug message that might get useful in the future.");
 
             try
             {

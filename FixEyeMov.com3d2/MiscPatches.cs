@@ -7,10 +7,18 @@ using HarmonyLib;
 namespace Karenia.FixEyeMov.Com3d2
 {
     /// <summary>
-    /// Miscellaneous patches that fixes bugs in the game.
+    /// Miscellaneous patches that smooth out compatibility stuff.
     /// </summary>
     public static class MiscPatches
     {
+        /// <summary>
+        /// Apply all compatibility patches.
+        /// </summary>
+        /// <param name="gameVersion">
+        /// The game's version, in format like <c>XYYZ</c>, which corresponds to game version <c>X.YY.Z</c>.
+        /// </param>
+        /// <param name="harmony">The Harmony patcher instance.</param>
+        /// <param name="logger">BepInEx's logger instance</param>
         public static void ApplyPatches(
             int gameVersion,
             HarmonyLib.Harmony harmony,
