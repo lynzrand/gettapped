@@ -2,26 +2,25 @@
 using System;
 using Karenia.GetTapped.Core;
 using HarmonyLib;
-using System.IO;
-using System.Diagnostics;
-using System.Collections;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using System.Reflection;
+using System.Linq;
 using UnityEngine.EventSystems;
-using UnityEngine.UI;
 using Karenia.GetTapped.Util;
 
 namespace Karenia.GetTapped.KK
 {
     [BepInPlugin(id, projectName, version)]
+    // It's always good to have this plugin in advance so we don't have to load it again
+    [BepInDependency(realPovPluginName, BepInDependency.DependencyFlags.SoftDependency)]
     public class Plugin : BaseUnityPlugin
     {
         public const string id = "cc.karenia.gettapped.kk";
         public const string projectName = "GetTapped.KK";
-        public const string version = "0.3.0";
+        public const string version = "0.3.1";
+
+        public const string realPovPluginName = "keehauled.realpov";
 
         public Plugin()
         {
@@ -130,11 +129,13 @@ namespace Karenia.GetTapped.KK
 
         public static void TryPatchRealPov(Harmony harmony)
         {
-            Assembly realPov = null;
             MethodInfo realPovUpdate;
+            Type realPovCore;
+            Assembly realPov;
             try
             {
                 realPov = Assembly.Load("RealPOV.Koikatu");
+                realPovCore = AccessTools.TypeByName("RealPOV.Koikatu.RealPOV");
                 realPovLookRotationField = AccessTools.Field(AccessTools.TypeByName("RealPOV.Core.RealPOVCore"), "LookRotation");
                 realPovUpdate =
                     AccessTools.Method("RealPOV.Core.RealPOVCore:LateUpdate")
@@ -145,20 +146,66 @@ namespace Karenia.GetTapped.KK
                 Plugin.Instance.Logger.LogInfo("RealPOV not loaded.");
                 return;
             }
-            if (realPov == null || realPovUpdate == null || realPovLookRotationField == null)
+            if (realPovCore == null || realPovUpdate == null || realPovLookRotationField == null)
             {
-                Plugin.Instance.Logger.LogWarning("It's strange. Cannot load `RealPOV.Core.RealPOVCore` although `RealPOV` is loaded.");
+                Plugin.Instance.Logger.LogInfo("RealPOV Not loaded");
                 return;
             }
 
-            harmony.Patch(
-                realPovUpdate,
-                postfix: new HarmonyMethod(AccessTools.Method(typeof(CameraHook), "RealPOVPostfix")));
+            var dependencyAttr = realPovCore.GetCustomAttributes(false).Where(o => o.GetType() == typeof(BepInPlugin)).FirstOrDefault() as BepInPlugin;
+            var realPovVersion = RealPovVersion.Unknown;
+
+            if (dependencyAttr != null)
+            {
+                var version = dependencyAttr.Version;
+                if (version.Major == 1)
+                {
+                    if (version.Minor <= 1)
+                    {
+                        realPovVersion = RealPovVersion._1_1_OrBelow;
+                    }
+                    else
+                    {
+                        realPovVersion = RealPovVersion._1_2_OrAbove;
+                    }
+                }
+            }
+
+            switch (realPovVersion)
+            {
+                case RealPovVersion._1_1_OrBelow:
+                    harmony.Patch(
+                        realPovUpdate,
+                        postfix: new HarmonyMethod(AccessTools.Method(typeof(CameraHook), "RealPOVPostfix_ver1_1_AndEarlier")));
+                    break;
+
+                case RealPovVersion._1_2_OrAbove:
+                    realPovLookCurrentCharaField = AccessTools.Field(AccessTools.TypeByName("RealPOV.Core.RealPOVCore"), "currentCharaGo");
+                    harmony.Patch(
+                      realPovUpdate,
+                      postfix: new HarmonyMethod(AccessTools.Method(typeof(CameraHook), "RealPOVPostfix_ver1_2_AndLater")));
+                    break;
+
+                case RealPovVersion.Unknown:
+                    Plugin.Instance.Logger.LogError($"Unknown RealPOV Version: {dependencyAttr?.Version}. Please open up an issue to get supported.");
+                    break;
+            }
+        }
+
+        private enum RealPovVersion
+        {
+            _1_1_OrBelow,
+            _1_2_OrAbove,
+            Unknown
         }
 
         private static FieldInfo realPovLookRotationField;
+        private static FieldInfo realPovLookCurrentCharaField;
 
-        public static void RealPOVPostfix()
+        /// <summary>
+        /// Patch for RealPOV v1.1 and earlier, when <c>LookRotation</c> is just a Vector3
+        /// </summary>
+        public static void RealPOVPostfix_ver1_1_AndEarlier()
         {
             var movement = Plugin.Instance.Core.GetCameraMovement(shouldBeUntracked: IsPointerOverUI);
             var rotation = (Vector3)realPovLookRotationField.GetValue(null);
@@ -166,6 +213,24 @@ namespace Karenia.GetTapped.KK
                 * 0.1f
                 * Plugin.Instance.PluginConfig.RotationSensitivity.Value;
             realPovLookRotationField.SetValue(null, rotation);
+        }
+
+        /// <summary>
+        /// Patch for RealPOV v1.2 and later, when <c>LookRotation</c> is a Dictionary of character IDs
+        /// </summary>
+        public static void RealPOVPostfix_ver1_2_AndLater()
+        {
+            var lookRotation = (Dictionary<GameObject, Vector3>)realPovLookRotationField.GetValue(null);
+            var currGameObject = (GameObject)realPovLookCurrentCharaField.GetValue(null);
+
+            if (currGameObject != null && lookRotation.TryGetValue(currGameObject, out var rotation))
+            {
+                var movement = Plugin.Instance.Core.GetCameraMovement(shouldBeUntracked: IsPointerOverUI);
+                rotation += new Vector3(movement.ScreenSpaceRotation.y, -movement.ScreenSpaceRotation.x, 0)
+                    * 0.1f
+                    * Plugin.Instance.PluginConfig.RotationSensitivity.Value;
+                lookRotation[currGameObject] = rotation;
+            }
         }
     }
 
