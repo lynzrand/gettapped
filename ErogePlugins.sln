@@ -28,6 +28,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FixEyeMov.KK", "FixEyeMov.K
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SocialForces.KK", "SocialForces.KK\SocialForces.KK.csproj", "{B16CE3F3-58D3-401A-B3B8-FAECB18E7F49}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FixEyeMov.KKSS", "FixEyeMov.KKSS\FixEyeMov.KKSS.csproj", "{107AEE7E-572B-418D-B7FE-30756B82BEF6}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GetTapped.KKSS", "GetTapped.KKSS\GetTapped.KKSS.csproj", "{05687453-B88F-47BF-8CDA-93F7ED66C343}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -70,6 +74,14 @@ Global
 		{B16CE3F3-58D3-401A-B3B8-FAECB18E7F49}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B16CE3F3-58D3-401A-B3B8-FAECB18E7F49}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B16CE3F3-58D3-401A-B3B8-FAECB18E7F49}.Release|Any CPU.Build.0 = Release|Any CPU
+		{107AEE7E-572B-418D-B7FE-30756B82BEF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{107AEE7E-572B-418D-B7FE-30756B82BEF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{107AEE7E-572B-418D-B7FE-30756B82BEF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{107AEE7E-572B-418D-B7FE-30756B82BEF6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{05687453-B88F-47BF-8CDA-93F7ED66C343}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{05687453-B88F-47BF-8CDA-93F7ED66C343}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{05687453-B88F-47BF-8CDA-93F7ED66C343}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{05687453-B88F-47BF-8CDA-93F7ED66C343}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
