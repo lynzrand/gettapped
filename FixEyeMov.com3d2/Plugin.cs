@@ -8,6 +8,7 @@ using Karenia.FixEyeMov.Core;
 using BepInEx;
 using System.Reflection;
 using static Karenia.FixEyeMov.Com3d2.CharaExt;
+using Karenia.FixEyeMov.Core.Poi;
 
 namespace Karenia.FixEyeMov.Com3d2
 {
@@ -24,7 +25,7 @@ namespace Karenia.FixEyeMov.Com3d2
         {
             Instance = this;
             EyeConfig = new EyeMovementConfig(base.Config);
-            PoiConfig = new Poi.PoiConfig(base.Config)
+            PoiConfig = new PoiConfig(base.Config)
             {
                 TargetWeightFactorFunction = (baseTransform, target, originalTarget) =>
                 {
@@ -101,7 +102,7 @@ namespace Karenia.FixEyeMov.Com3d2
 
         public static Plugin? Instance { get; private set; }
         public EyeMovementConfig EyeConfig { get; private set; }
-        public Poi.PoiConfig PoiConfig { get; private set; }
+        public PoiConfig PoiConfig { get; private set; }
         public new BepInEx.Logging.ManualLogSource Logger { get; private set; }
     }
 
