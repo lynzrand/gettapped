@@ -5,6 +5,20 @@ using static Karenia.FixEyeMov.Core.MathfExt;
 
 namespace Karenia.FixEyeMov.Core
 {
+    public class EyeMovementDefaultConfig
+    {
+        public float DriftSpeed { get; set; } = 800f;
+        public float DriftSpeedStdDev { get; set; } = 200f;
+        public float DriftDirectionRange { get; set; } = 100f;
+        public float MSaccadeInterval { get; set; } = 0.8f;
+        public float MSaccadeIntervalStdDev { get; set; } = 0.6f;
+        public float MSaccadeDirectionDev { get; set; } = 40f;
+        public float MSaccadeSpeed { get; set; } = 10000f;
+        public float MSaccadeSpeedStdDev { get; set; } = 300f;
+        public float MSaccadeOvershootDev { get; set; } = 0.6f;
+        public float MaxOffsetAngle { get; set; } = 5f;
+    }
+
     public class EyeMovementConfig
     {
         /*
@@ -43,22 +57,22 @@ namespace Karenia.FixEyeMov.Core
 
         public ConfigEntry<bool> Enabled { get; private set; }
 
-        public EyeMovementConfig(ConfigFile config)
+        public EyeMovementConfig(ConfigFile config, EyeMovementDefaultConfig defaultConfig)
         {
             const string section = "Basic Settings";
             const string fineTuneSection = "Fine Tuning";
             Enabled = config.Bind(section, nameof(Enabled), true);
             DebugLog = config.Bind(section, nameof(DebugLog), false);
 
-            DriftSpeed = config.Bind(fineTuneSection, nameof(DriftSpeed), 800f, "Eye drift mean speed (degrees/second)");
-            DriftSpeedStdDev = config.Bind(fineTuneSection, nameof(DriftSpeedStdDev), 200f, "Eye drift speed standard deviation");
-            DriftDirectionRange = config.Bind(fineTuneSection, nameof(DriftDirectionRange), 100f, "Eye drift direction change range");
-            MSaccadeInterval = config.Bind(fineTuneSection, nameof(MSaccadeInterval), 0.8f, "Micro-saccade mean interval (seconds)");
-            MSaccadeIntervalStdDev = config.Bind(fineTuneSection, nameof(MSaccadeIntervalStdDev), 0.6f, "Micro-saccade mean interval");
-            MSaccadeDirectionDev = config.Bind(fineTuneSection, nameof(MSaccadeDirectionDev), 40f, "Micro-saccade direction standard deviation (degrees)");
-            MSaccadeSpeed = config.Bind(fineTuneSection, nameof(MSaccadeSpeed), 10000f, "Micro-saccade mean speed (degrees/second)");
-            MSaccadeSpeedStdDev = config.Bind(fineTuneSection, nameof(MSaccadeSpeedStdDev), 300f, "Micro-saccade speed standard deviation");
-            MSaccadeOvershootDev = config.Bind(fineTuneSection, nameof(MSaccadeOvershootDev), 0.6f, "Micro-saccade overshooting factor standard deviation");
+            DriftSpeed = config.Bind(fineTuneSection, nameof(DriftSpeed), defaultConfig.DriftSpeed, "Eye drift mean speed (degrees/second)");
+            DriftSpeedStdDev = config.Bind(fineTuneSection, nameof(DriftSpeedStdDev), defaultConfig.DriftSpeedStdDev, "Eye drift speed standard deviation");
+            DriftDirectionRange = config.Bind(fineTuneSection, nameof(DriftDirectionRange), defaultConfig.DriftDirectionRange, "Eye drift direction change range");
+            MSaccadeInterval = config.Bind(fineTuneSection, nameof(MSaccadeInterval), defaultConfig.MSaccadeInterval, "Micro-saccade mean interval (seconds)");
+            MSaccadeIntervalStdDev = config.Bind(fineTuneSection, nameof(MSaccadeIntervalStdDev), defaultConfig.MSaccadeIntervalStdDev, "Micro-saccade mean interval");
+            MSaccadeDirectionDev = config.Bind(fineTuneSection, nameof(MSaccadeDirectionDev), defaultConfig.MSaccadeDirectionDev, "Micro-saccade direction standard deviation (degrees)");
+            MSaccadeSpeed = config.Bind(fineTuneSection, nameof(MSaccadeSpeed), defaultConfig.MSaccadeSpeed, "Micro-saccade mean speed (degrees/second)");
+            MSaccadeSpeedStdDev = config.Bind(fineTuneSection, nameof(MSaccadeSpeedStdDev), defaultConfig.MSaccadeSpeedStdDev, "Micro-saccade speed standard deviation");
+            MSaccadeOvershootDev = config.Bind(fineTuneSection, nameof(MSaccadeOvershootDev), defaultConfig.MSaccadeOvershootDev, "Micro-saccade overshooting factor standard deviation");
 
             MaxOffsetAngle = config.Bind(fineTuneSection, nameof(MaxOffsetAngle), 5f, "Max offset angle (degrees)");
         }
@@ -104,7 +118,7 @@ namespace Karenia.FixEyeMov.Core
 
     /// <summary>
     /// State and algorithm of fixational eye simulator.
-    /// 
+    ///
     /// <para>
     /// The original algorithm comes from https://github.com/hjiang36/pyEyeBall/
     /// </para>
@@ -120,14 +134,14 @@ namespace Karenia.FixEyeMov.Core
         private readonly EyeMovementConfig config;
         private readonly ManualLogSource? logger;
 
-        Vector2 curDelta = Vector2.zero;
-        float curDriftDirection = UnityEngine.Random.Range(0f, Mathf.PI * 2);
-        float curDriftSpeed = 0;
+        private Vector2 curDelta = Vector2.zero;
+        private float curDriftDirection = UnityEngine.Random.Range(0f, Mathf.PI * 2);
+        private float curDriftSpeed = 0;
 
-        float timeTillNextSaccade = 0;
-        float remainingTimeOfThisSaccade = 0;
-        float mSaccadeSpeed;
-        float mSaccadeAxis;
+        private float timeTillNextSaccade = 0;
+        private float remainingTimeOfThisSaccade = 0;
+        private float mSaccadeSpeed;
+        private float mSaccadeAxis;
 
         /// <summary>
         /// Generate information for the upcoming micro-saccade
@@ -201,7 +215,6 @@ namespace Karenia.FixEyeMov.Core
                 logger.LogInfo($"Drift: {curDriftSpeed} @ {curDriftDirection * Mathf.Rad2Deg}deg");
         }
 
-
         /// <summary>
         /// Update model and return calculated delta on this frame
         /// </summary>
@@ -219,5 +232,4 @@ namespace Karenia.FixEyeMov.Core
             return this.curDelta;
         }
     }
-
 }

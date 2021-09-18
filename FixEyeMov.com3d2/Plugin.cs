@@ -24,7 +24,7 @@ namespace Karenia.FixEyeMov.Com3d2
         public Plugin()
         {
             Instance = this;
-            EyeConfig = new EyeMovementConfig(base.Config);
+            EyeConfig = new EyeMovementConfig(base.Config, new EyeMovementDefaultConfig());
             PoiConfig = new PoiConfig(base.Config)
             {
                 TargetWeightFactorFunction = (baseTransform, target, originalTarget) =>

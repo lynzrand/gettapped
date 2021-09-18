@@ -20,7 +20,16 @@ namespace Karenia.FixEyeMov.KKSS
         public Plugin()
         {
             Instance = this;
-            EyeConfig = new EyeMovementConfig(base.Config);
+            EyeConfig = new EyeMovementConfig(
+                base.Config, new EyeMovementDefaultConfig()
+                {
+                    DriftSpeed = 200f,
+                    DriftSpeedStdDev = 100f,
+                    MSaccadeInterval = 0.3f,
+                    MSaccadeSpeed = 100000f,
+                    MSaccadeSpeedStdDev = 30000f,
+                    MaxOffsetAngle = 0.3f
+                });
 
             Logger = BepInEx.Logging.Logger.CreateLogSource("FixEyeMov");
             var harmony = new Harmony(id);
