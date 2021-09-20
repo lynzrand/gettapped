@@ -51,18 +51,39 @@ Steps:
 3. ???
 4. Success!
 
-## Before building
-
-Copy the `Assembly-CSharp.dll` of your designated game to `reference/<your-game-name>/`.
-
-If you are going to build FixKPlug, you also need `kPlug.dll` and `ExtensibleSaveFormat.dll` in there.
 
 ## Building
 
-1. Open project in Visual Studio.
+1. Place the corresponding files in `refrence/` (see below)
+2. Open project in Visual Studio.
 2. Hit "Build" really hard.
 3. Your output should be located in `Release/<project-name>`.
 4. Install and enjoy!
+
+### Game files
+
+**For all plugins and games:** Copy the `Assembly-CSharp.dll` of your designated game to `reference/<your-game-name>/`.
+
+|Game|folder|
+|----|------|
+|COM3D2 | `com3d2` |
+| Insult Order | `insultorder` |
+| KoiKatsu | `koikatsu`|
+| KoiKatsu Sunshine | `koikatsu-sunshine`|
+
+
+#### Extra files for games / plugins
+
+**FixKPlug:** 
+
+- In `reference/games/koikatsu/`:
+  - Copy `kPlug.dll` and `ExtensibleSaveFormat.dll`
+
+**KoiKatsu Sunshine:**
+
+- In `reference/games/koikatsu-sunshine/`:
+  - Copy `UnityEngine.dll` and `UnityEngine.{CoreModule,InputLegacyModule,UI,UIModule}.dll`
+  - Add `.kkss` before `.dll` in files above
 
 ## License
 
