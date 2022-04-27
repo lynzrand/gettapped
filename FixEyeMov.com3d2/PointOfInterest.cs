@@ -514,10 +514,23 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
         public static void AddCameraTarget(Maid __instance)
         {
             if (!poiRepo.TryGetValue(__instance.body0, out var poi)) return;
-            CameraTarget target = new CameraTarget();
-            // main targets should be replacing each other, thus the same name
-            poi.AddPoi("target", new PointOfInterest(target, 2, true));
-            poi.MainTarget = target;
+            if (__instance.body0.trsLookTarget is null)
+            {
+                Plugin.Instance?.Logger.LogInfo($"{__instance} target reset");
+                RemoveTarget(__instance);
+            }
+            else if (!__instance.body0.boEyeToCam)
+            {
+                Plugin.Instance?.Logger.LogInfo($"{__instance} reset EyeToCamera due movetype");
+                RemoveTarget(__instance);
+            }
+            else
+            {
+                CameraTarget target = new CameraTarget();
+                // main targets should be replacing each other, thus the same name
+                poi.AddPoi("target", new PointOfInterest(target, 2, true));
+                poi.MainTarget = target;
+            }
         }
 
         [HarmonyPostfix, HarmonyPatch(typeof(Maid), "EyeToPosition")]
