@@ -39,10 +39,53 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
     internal static class InterestedTransform
     {
         private static readonly FieldInfo jiggleBoneSubject = AccessTools.Field(typeof(jiggleBone), "m_trSub");
+        private static readonly PropertyInfo dbMuneLProperty = AccessTools.Property(typeof(TBody), "dbMuneL");
+        private static readonly PropertyInfo dbMuneRProperty = AccessTools.Property(typeof(TBody), "dbMuneR");
+        private static readonly FieldInfo dynamicMuneBoneSubject = null;
 
-        public static Transform? LeftBreast(TBody body) => (Transform)jiggleBoneSubject.GetValue(body.jbMuneL);
+        static InterestedTransform()
+        {
+            if (dbMuneLProperty != null)
+            {
+                dynamicMuneBoneSubject = AccessTools.Field(dbMuneLProperty.PropertyType, "MuneSub");
+            }
+        }
 
-        public static Transform? RightBreast(TBody body) => (Transform)jiggleBoneSubject.GetValue(body.jbMuneR);
+        public static Transform? LeftBreast(TBody body)
+        {
+            if (!body.maid.IsCrcBody)
+            {
+                return (Transform)jiggleBoneSubject.GetValue(body.jbMuneL);
+            }
+            else
+            {
+                var dbMuneL = dbMuneLProperty.GetValue(body, null);
+                if (dbMuneL != null)
+                {
+                    return (Transform)dynamicMuneBoneSubject.GetValue(dbMuneL);
+                }
+            }
+
+            return null;
+        }
+
+        public static Transform? RightBreast(TBody body)
+        {
+            if (!body.maid.IsCrcBody)
+            {
+                return (Transform)jiggleBoneSubject.GetValue(body.jbMuneR);
+            }
+            else
+            {
+                var dbMuneR = dbMuneRProperty.GetValue(body, null);
+                if(dbMuneR != null)
+                {
+                    return (Transform)dynamicMuneBoneSubject.GetValue(dbMuneR);
+                }
+            }
+
+            return null;
+        }
 
         public static Transform? Genitalia(TBody body) => body.Pelvis.transform;
 
