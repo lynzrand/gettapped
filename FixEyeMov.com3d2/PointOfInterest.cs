@@ -343,9 +343,13 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
         /// <param name="harmony"></param>
         public static void PatchMaidVoicePitch(Harmony harmony)
         {
-            var assembly = System.Reflection.Assembly.Load("COM3D2.MaidVoicePitch.Plugin");
             ManualLogSource? logger = Plugin.Instance?.Logger;
-            if (assembly == null)
+
+            try
+            {
+                 var assembly = System.Reflection.Assembly.Load("COM3D2.MaidVoicePitch.Plugin");
+            }
+            catch (System.IO.FileNotFoundException e)
             {
                 logger?.LogInfo("MaidVoicePitch not found. Exiting.");
                 return;
