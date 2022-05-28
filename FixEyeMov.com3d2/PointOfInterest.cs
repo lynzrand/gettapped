@@ -32,15 +32,60 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
         {
             return baseTransform.TransformPoint(this.body.offsetLookTarget);
         }
+
+        public bool IsStillValid => this.body != null;
     }
 
     internal static class InterestedTransform
     {
         private static readonly FieldInfo jiggleBoneSubject = AccessTools.Field(typeof(jiggleBone), "m_trSub");
+        private static readonly PropertyInfo dbMuneLProperty = AccessTools.Property(typeof(TBody), "dbMuneL");
+        private static readonly PropertyInfo dbMuneRProperty = AccessTools.Property(typeof(TBody), "dbMuneR");
+        private static readonly FieldInfo dynamicMuneBoneSubject = null;
 
-        public static Transform? LeftBreast(TBody body) => (Transform)jiggleBoneSubject.GetValue(body.jbMuneL);
+        static InterestedTransform()
+        {
+            if (dbMuneLProperty != null)
+            {
+                dynamicMuneBoneSubject = AccessTools.Field(dbMuneLProperty.PropertyType, "MuneSub");
+            }
+        }
 
-        public static Transform? RightBreast(TBody body) => (Transform)jiggleBoneSubject.GetValue(body.jbMuneR);
+        public static Transform? LeftBreast(TBody body)
+        {
+            if (!body.maid.IsCrcBody)
+            {
+                return (Transform)jiggleBoneSubject.GetValue(body.jbMuneL);
+            }
+            else
+            {
+                var dbMuneL = dbMuneLProperty.GetValue(body, null);
+                if (dbMuneL != null)
+                {
+                    return (Transform)dynamicMuneBoneSubject.GetValue(dbMuneL);
+                }
+            }
+
+            return null;
+        }
+
+        public static Transform? RightBreast(TBody body)
+        {
+            if (!body.maid.IsCrcBody)
+            {
+                return (Transform)jiggleBoneSubject.GetValue(body.jbMuneR);
+            }
+            else
+            {
+                var dbMuneR = dbMuneRProperty.GetValue(body, null);
+                if(dbMuneR != null)
+                {
+                    return (Transform)dynamicMuneBoneSubject.GetValue(dbMuneR);
+                }
+            }
+
+            return null;
+        }
 
         public static Transform? Genitalia(TBody body) => body.Pelvis.transform;
 
@@ -99,6 +144,7 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
                     foreach (var kv in poi.PointOfInterest)
                     {
                         if (kv.Value.target is CameraTarget) continue;
+                        if (!kv.Value.target.IsStillValid) continue;
                         list.Add(kv.Value.target.WorldPosition(poi.baseTransform));
                         list.Add(poi.baseTransform.position);
                         //Debug.DrawRay(poi.baseTransform.position, kv.Value.target.position - poi.baseTransform.position, Color.blue);
@@ -297,9 +343,13 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
         /// <param name="harmony"></param>
         public static void PatchMaidVoicePitch(Harmony harmony)
         {
-            var assembly = System.Reflection.Assembly.Load("COM3D2.MaidVoicePitch.Plugin");
             ManualLogSource? logger = Plugin.Instance?.Logger;
-            if (assembly == null)
+
+            try
+            {
+                 var assembly = System.Reflection.Assembly.Load("COM3D2.MaidVoicePitch.Plugin");
+            }
+            catch (System.IO.FileNotFoundException e)
             {
                 logger?.LogInfo("MaidVoicePitch not found. Exiting.");
                 return;
@@ -421,15 +471,23 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
 
         public static Vector3 MaidVoicePitch_ChangeEyeTarget(TBody __instance, Vector3 targetPosition)
         {
-            var target = SetPoi(__instance);
-            if (target != null)
+            try
             {
-                __instance.boEyeToCam = true;
-                __instance.boChkEye = true;
-                return target.Value;
+                var target = SetPoi(__instance);
+                if (target != null)
+                {
+                    __instance.boEyeToCam = true;
+                    __instance.boChkEye = true;
+                    return target.Value;
+                }
+                else
+                {
+                    return targetPosition;
+                }
             }
-            else
+            catch(Exception e)
             {
+                Plugin.Instance?.Logger.LogError(e);
                 return targetPosition;
             }
         }
@@ -452,14 +510,46 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
             }
         }
 
+        [HarmonyPostfix, HarmonyPatch(typeof(Maid), "EyeToTargetObject")]
+        public static void AddTarget(Maid __instance, Transform target_trans, float f_fFadeTime)
+        {
+            if (!poiRepo.TryGetValue(__instance.body0, out var poi)) return;
+            // Chances are the null target is intentional, as seen in the source code
+            if (__instance.body0.trsLookTarget == null)
+            {
+                RemoveTarget(__instance);
+            }
+            else
+            {
+                TransformTarget target = new TransformTarget(__instance.body0.trsLookTarget);
+                Plugin.Instance?.Logger.LogInfo($"{__instance} new object ransform target {__instance.body0.trsLookTarget}");
+                // main targets should be replacing each other, thus the same name
+                poi.AddPoi("target", new PointOfInterest(target, 2, true));
+                poi.MainTarget = target;
+            }
+        }
+
         [HarmonyPostfix, HarmonyPatch(typeof(Maid), "EyeToCamera")]
         public static void AddCameraTarget(Maid __instance)
         {
             if (!poiRepo.TryGetValue(__instance.body0, out var poi)) return;
-            CameraTarget target = new CameraTarget();
-            // main targets should be replacing each other, thus the same name
-            poi.AddPoi("target", new PointOfInterest(target, 2, true));
-            poi.MainTarget = target;
+            if (__instance.body0.trsLookTarget is null)
+            {
+                Plugin.Instance?.Logger.LogInfo($"{__instance} target reset");
+                RemoveTarget(__instance);
+            }
+            else if (!__instance.body0.boEyeToCam)
+            {
+                Plugin.Instance?.Logger.LogInfo($"{__instance} reset EyeToCamera due movetype");
+                RemoveTarget(__instance);
+            }
+            else
+            {
+                CameraTarget target = new CameraTarget();
+                // main targets should be replacing each other, thus the same name
+                poi.AddPoi("target", new PointOfInterest(target, 2, true));
+                poi.MainTarget = target;
+            }
         }
 
         [HarmonyPostfix, HarmonyPatch(typeof(Maid), "EyeToPosition")]
@@ -681,6 +771,8 @@ namespace Karenia.FixEyeMov.Com3d2.Poi
 
         public static void InitPoiInfo(TBody __instance)
         {
+            if (!enableByScene) return;
+            if (!Plugin.Instance?.PoiConfig.Enabled.Value ?? false) return;
             if (__instance.boMAN || __instance.trsHead == null) return;
             if (Plugin.Instance == null) return;
             Plugin.Instance.Logger.LogDebug($"Initialized POI at {__instance.maid.name}#{__instance.maid.GetHashCode()}");

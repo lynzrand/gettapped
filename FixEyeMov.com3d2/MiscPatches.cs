@@ -24,9 +24,9 @@ namespace Karenia.FixEyeMov.Com3d2
             HarmonyLib.Harmony harmony,
             BepInEx.Logging.ManualLogSource logger)
         {
-            var getSlotLoadedMethod = AccessTools.Method(typeof(TBody), "GetSlotLoaded");
             if (gameVersion < 1560)
             {
+                var getSlotLoadedMethod = AccessTools.Method(typeof(TBody), "GetSlotLoaded");
                 harmony.Patch(getSlotLoadedMethod, prefix: new HarmonyMethod(AccessTools.Method(typeof(MiscPatches), nameof(LoadSlotBoundsCheck))));
             }
         }

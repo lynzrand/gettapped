@@ -79,6 +79,8 @@ namespace Karenia.FixEyeMov.Com3d2
                 Logger.LogDebug("Patching POI stuff");
                 harmony.PatchAll(typeof(Poi.PoiHook));
                 Poi.PoiHook.PatchKagSceneTags(harmony);
+                Poi.PoiHook.PatchInitPoiInfo(harmony);
+                Poi.PoiHook.Init();
             }
             catch (Exception e)
             {

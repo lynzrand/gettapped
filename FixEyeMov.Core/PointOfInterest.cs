@@ -43,16 +43,20 @@ namespace Karenia.FixEyeMov.Core.Poi
         public Vector3 WorldPosition(Transform baseTransform);
 
         public bool ShouldBeSelected(Transform baseTransform, Vector3 directionVector);
+
+        public bool IsStillValid { get;  }
     }
 
     public class TransformTarget : IPoiTarget
     {
-        public Transform transform;
+        public Transform transform { get; private set; }
+        GameObject go;
 
         public TransformTarget(Transform transform)
         {
             if (transform == null) throw new ArgumentNullException(nameof(transform), "Transform must not be null inside a TransformTarget");
             this.transform = transform;
+            this.go = transform.gameObject;
         }
 
         public string? Name => $"{transform.name}#{transform.GetHashCode()}";
@@ -73,6 +77,8 @@ namespace Karenia.FixEyeMov.Core.Poi
         }
 
         public Vector3 WorldPosition(Transform _) => transform.position;
+
+        public bool IsStillValid => go != null;
     }
 
     public class CameraTarget : IPoiTarget
@@ -84,6 +90,8 @@ namespace Karenia.FixEyeMov.Core.Poi
         public bool ShouldBeSelected(Transform baseTransform, Vector3 directionVector) => true;
 
         public Vector3 WorldPosition(Transform _) => Camera.main.transform.position;
+
+        public bool IsStillValid => true;
     }
 
     public class PointOfInterest : ICloneable
@@ -215,6 +223,8 @@ namespace Karenia.FixEyeMov.Core.Poi
 
             foreach (var kv in pointOfInterest)
             {
+                if (!kv.Value.target.IsStillValid) continue;
+
                 Vector3 targetPosition = kv.Value.target.WorldPosition(baseTransform);
 
                 if (ViewportContains(viewDirection, targetPosition) || kv.Value.alwaysPresent)
@@ -251,7 +261,7 @@ namespace Karenia.FixEyeMov.Core.Poi
         {
             Vector3 viewDirection;
 
-            if (MainTarget != null && MainTarget.CanGuideTargetSearching)
+            if (MainTarget != null && MainTarget.IsStillValid && MainTarget.CanGuideTargetSearching)
             {
                 viewDirection = MainTarget.WorldPosition(baseTransform) - baseTransform.position;
             }
@@ -299,6 +309,12 @@ namespace Karenia.FixEyeMov.Core.Poi
         public IPoiTarget? Tick(float deltaT)
         {
             if (pointOfInterest.Count == 0) return null;
+
+            if (!currentTarget?.Value.target.IsStillValid ?? false)
+            {
+                currentTarget = null;
+            }
+
             stareTime += deltaT;
             timeTillNextTransfer -= deltaT;
             bool shouldTransfer = false;
@@ -307,10 +323,12 @@ namespace Karenia.FixEyeMov.Core.Poi
                 ResetTransferInterval();
                 shouldTransfer = true;
             }
+
             if (currentTarget.HasValue)
             {
                 shouldTransfer |= !ViewportContains(DirectionVector(), currentTarget.Value.Value.target.WorldPosition(baseTransform));
             }
+
             if (shouldTransfer && TriggerTransfer())
             {
                 stareTime = 0;
@@ -325,13 +343,9 @@ namespace Karenia.FixEyeMov.Core.Poi
                 }
                 return i?.Value.target;
             }
-            else if (currentTarget != null)
-            {
-                return currentTarget.Value.Value.target;
-            }
             else
             {
-                return null;
+                return currentTarget?.Value.target;
             }
         }
 
